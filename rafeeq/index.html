@@ -1,0 +1,4933 @@
+<!DOCTYPE html>
+<!--
+  Rafeeq (رفيق) — A Web Companion for Elderly People and Their Families
+  Competition: Intergraphity
+  
+  NOTE: In a real deployment, this would use Firebase Auth, Firestore, 
+  and Cloud Functions instead of localStorage. Voice recordings would 
+  be stored in Cloud Storage. Push notifications would use FCM.
+  
+  All user-facing text is in the TEXT object below (Modern Standard Arabic).
+  Code comments are in English.
+-->
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>رفيق — رفيق والديك</title>
+  <meta name="description" content="رفيق يذكّر والديك بأدويتهم بصوتك أنت، ويطمئنك أنّهم بخير.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    /* ============================================================
+       CSS CUSTOM PROPERTIES
+       ============================================================ */
+    :root {
+      --clr-olive: #4A7C59;
+      --clr-olive-dark: #3A6347;
+      --clr-olive-light: #6B9E78;
+      --clr-beige: #FDF8F0;
+      --clr-beige-dark: #F0E6D3;
+      --clr-blue: #5B8FB9;
+      --clr-blue-light: #89B4D4;
+      --clr-blue-dark: #3D6F8E;
+      --clr-warm-white: #FFFDF9;
+      --clr-text: #2D2A26;
+      --clr-text-light: #5C5650;
+      --clr-danger: #C0392B;
+      --clr-danger-light: #E74C3C;
+      --clr-warning: #E8A838;
+      --clr-success: #27AE60;
+      --clr-card: #FFFFFF;
+      --clr-shadow: rgba(74, 124, 89, 0.12);
+      --clr-overlay: rgba(45, 42, 38, 0.6);
+      --radius-sm: 12px;
+      --radius-md: 18px;
+      --radius-lg: 24px;
+      --radius-xl: 32px;
+      --shadow-sm: 0 2px 8px var(--clr-shadow);
+      --shadow-md: 0 4px 16px var(--clr-shadow);
+      --shadow-lg: 0 8px 32px var(--clr-shadow);
+      --font-base: var(--font-size-base, 22px);
+      --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* ============================================================
+       RESET & BASE
+       ============================================================ */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      font-size: var(--font-base);
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Cairo', sans-serif;
+      background: var(--clr-beige);
+      color: var(--clr-text);
+      line-height: 1.7;
+      min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    img { max-width: 100%; height: auto; display: block; }
+    button { cursor: pointer; font-family: inherit; border: none; outline: none; }
+    input, select, textarea { font-family: inherit; font-size: inherit; }
+    a { color: inherit; text-decoration: none; }
+
+    /* Focus styles for accessibility */
+    *:focus-visible {
+      outline: 3px solid var(--clr-blue);
+      outline-offset: 3px;
+      border-radius: 4px;
+    }
+
+    /* ============================================================
+       UTILITY CLASSES
+       ============================================================ */
+    .hidden { display: none !important; }
+    .sr-only {
+      position: absolute; width: 1px; height: 1px;
+      padding: 0; margin: -1px; overflow: hidden;
+      clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+    }
+
+    .section {
+      display: none;
+      animation: fadeIn 0.4s ease;
+    }
+    .section.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    @keyframes breathe {
+      0%, 100% { transform: scale(0.6); opacity: 0.5; }
+      50% { transform: scale(1); opacity: 1; }
+    }
+
+    @keyframes countUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes ripple {
+      0% { transform: scale(0); opacity: 0.5; }
+      100% { transform: scale(4); opacity: 0; }
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+      20%, 40%, 60%, 80% { transform: translateX(4px); }
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(40px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+      html { scroll-behavior: auto; }
+    }
+
+    /* ============================================================
+       CONTAINER
+       ============================================================ */
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    .container-narrow {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* ============================================================
+       FONT SIZE CONTROL
+       ============================================================ */
+    .font-control {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 1000;
+      display: flex;
+      gap: 6px;
+      background: var(--clr-card);
+      padding: 6px;
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-md);
+    }
+
+    .font-control button {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      background: var(--clr-beige);
+      color: var(--clr-text);
+      font-size: 18px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+    }
+
+    .font-control button:hover {
+      background: var(--clr-olive);
+      color: white;
+    }
+
+    /* ============================================================
+       BUTTONS
+       ============================================================ */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      min-height: 64px;
+      padding: 14px 32px;
+      border-radius: var(--radius-md);
+      font-size: 1rem;
+      font-weight: 600;
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+      text-align: center;
+      line-height: 1.4;
+    }
+
+    .btn-lg {
+      min-height: 80px;
+      padding: 18px 40px;
+      font-size: 1.15rem;
+      border-radius: var(--radius-lg);
+    }
+
+    .btn-xl {
+      min-height: 100px;
+      padding: 24px 48px;
+      font-size: 1.3rem;
+      border-radius: var(--radius-xl);
+      font-weight: 700;
+    }
+
+    .btn-primary {
+      background: var(--clr-olive);
+      color: white;
+      box-shadow: var(--shadow-sm);
+    }
+    .btn-primary:hover { background: var(--clr-olive-dark); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .btn-primary:active { transform: translateY(0); }
+
+    .btn-secondary {
+      background: var(--clr-blue);
+      color: white;
+      box-shadow: var(--shadow-sm);
+    }
+    .btn-secondary:hover { background: var(--clr-blue-dark); transform: translateY(-2px); }
+
+    .btn-outline {
+      background: transparent;
+      border: 2px solid var(--clr-olive);
+      color: var(--clr-olive);
+    }
+    .btn-outline:hover { background: var(--clr-olive); color: white; }
+
+    .btn-danger {
+      background: var(--clr-danger);
+      color: white;
+      box-shadow: 0 4px 16px rgba(192, 57, 43, 0.3);
+    }
+    .btn-danger:hover { background: var(--clr-danger-light); transform: translateY(-2px); }
+
+    .btn-success {
+      background: var(--clr-success);
+      color: white;
+    }
+    .btn-success:hover { background: #219a52; }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--clr-text-light);
+    }
+    .btn-ghost:hover { background: var(--clr-beige-dark); }
+
+    .btn-block {
+      display: flex;
+      width: 100%;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    /* Ripple effect */
+    .btn .ripple {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      animation: ripple 0.6s linear;
+      pointer-events: none;
+    }
+
+    /* ============================================================
+       CARDS
+       ============================================================ */
+    .card {
+      background: var(--clr-card);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      box-shadow: var(--shadow-sm);
+      transition: var(--transition);
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow-md);
+    }
+
+    .card-flat {
+      background: var(--clr-beige);
+      border-radius: var(--radius-md);
+      padding: 20px;
+    }
+
+    /* ============================================================
+       FORM ELEMENTS
+       ============================================================ */
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: var(--clr-text);
+    }
+
+    .form-input {
+      width: 100%;
+      min-height: 56px;
+      padding: 12px 18px;
+      border: 2px solid var(--clr-beige-dark);
+      border-radius: var(--radius-sm);
+      background: var(--clr-warm-white);
+      color: var(--clr-text);
+      font-size: 1rem;
+      transition: var(--transition);
+    }
+
+    .form-input:focus {
+      border-color: var(--clr-olive);
+      box-shadow: 0 0 0 3px rgba(74,124,89,0.15);
+      outline: none;
+    }
+
+    .form-input::placeholder {
+      color: #999;
+    }
+
+    .form-input.error {
+      border-color: var(--clr-danger);
+      animation: shake 0.4s ease;
+    }
+
+    .form-error {
+      color: var(--clr-danger);
+      font-size: 0.85rem;
+      margin-top: 6px;
+      display: none;
+    }
+
+    .form-error.visible {
+      display: block;
+    }
+
+    /* ============================================================
+       LANDING PAGE
+       ============================================================ */
+    .landing-hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px 20px;
+      background: linear-gradient(135deg, var(--clr-beige) 0%, var(--clr-beige-dark) 50%, #E8E0D0 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .landing-hero::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -20%;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(74,124,89,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .landing-hero::after {
+      content: '';
+      position: absolute;
+      bottom: -30%;
+      left: -10%;
+      width: 400px;
+      height: 400px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(91,143,185,0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      max-width: 700px;
+    }
+
+    .hero-logo {
+      font-size: 3.5rem;
+      font-weight: 900;
+      color: var(--clr-olive);
+      margin-bottom: 8px;
+      letter-spacing: -1px;
+    }
+
+    .hero-logo span {
+      display: inline-block;
+      animation: slideUp 0.6s ease backwards;
+    }
+
+    .hero-subtitle {
+      font-size: 1.2rem;
+      color: var(--clr-text-light);
+      margin-bottom: 40px;
+      line-height: 1.8;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .hero-wave {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 80px;
+      overflow: hidden;
+    }
+
+    .hero-wave svg {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      height: 80px;
+    }
+
+    /* Stats section */
+    .stats-section {
+      padding: 80px 20px;
+      background: var(--clr-warm-white);
+      text-align: center;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 30px;
+      margin-top: 40px;
+    }
+
+    .stat-card {
+      padding: 30px 20px;
+      border-radius: var(--radius-lg);
+      background: var(--clr-card);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .stat-number {
+      font-size: 3rem;
+      font-weight: 900;
+      color: var(--clr-olive);
+      line-height: 1;
+      margin-bottom: 8px;
+      direction: ltr;
+    }
+
+    .stat-label {
+      font-size: 0.9rem;
+      color: var(--clr-text-light);
+      line-height: 1.6;
+    }
+
+    /* Steps section */
+    .steps-section {
+      padding: 80px 20px;
+      background: var(--clr-beige);
+    }
+
+    .section-title {
+      text-align: center;
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--clr-olive-dark);
+      margin-bottom: 16px;
+    }
+
+    .section-subtitle {
+      text-align: center;
+      color: var(--clr-text-light);
+      margin-bottom: 50px;
+      font-size: 1rem;
+    }
+
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 30px;
+    }
+
+    .step-card {
+      text-align: center;
+      padding: 40px 24px;
+      background: var(--clr-card);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      transition: var(--transition);
+    }
+
+    .step-card:hover {
+      transform: translateY(-6px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .step-icon {
+      font-size: 3rem;
+      margin-bottom: 16px;
+    }
+
+    .step-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--clr-olive);
+      color: white;
+      font-weight: 700;
+      font-size: 0.85rem;
+      margin-bottom: 12px;
+    }
+
+    .step-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--clr-text);
+    }
+
+    .step-desc {
+      font-size: 0.9rem;
+      color: var(--clr-text-light);
+      line-height: 1.7;
+    }
+
+    /* Story section */
+    .story-section {
+      padding: 80px 20px;
+      background: var(--clr-warm-white);
+    }
+
+    .story-card {
+      max-width: 700px;
+      margin: 0 auto;
+      background: var(--clr-card);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .story-header {
+      background: linear-gradient(135deg, var(--clr-olive) 0%, var(--clr-olive-light) 100%);
+      padding: 30px;
+      color: white;
+      text-align: center;
+    }
+
+    .story-header h3 {
+      font-size: 1.3rem;
+      font-weight: 700;
+    }
+
+    .story-body {
+      padding: 32px;
+    }
+
+    .story-phase {
+      padding: 20px;
+      border-radius: var(--radius-md);
+      margin-bottom: 20px;
+    }
+
+    .story-phase.before {
+      background: #FFF5F5;
+      border-right: 4px solid var(--clr-danger);
+    }
+
+    .story-phase.after {
+      background: #F0FFF4;
+      border-right: 4px solid var(--clr-success);
+    }
+
+    .story-phase-label {
+      font-weight: 700;
+      font-size: 0.85rem;
+      margin-bottom: 8px;
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+
+    .before .story-phase-label {
+      background: var(--clr-danger);
+      color: white;
+    }
+
+    .after .story-phase-label {
+      background: var(--clr-success);
+      color: white;
+    }
+
+    .story-phase p {
+      font-size: 0.95rem;
+      line-height: 1.8;
+      color: var(--clr-text);
+    }
+
+    /* Closing */
+    .closing-section {
+      padding: 80px 20px;
+      text-align: center;
+      background: linear-gradient(135deg, var(--clr-olive-dark) 0%, var(--clr-olive) 100%);
+      color: white;
+    }
+
+    .closing-text {
+      max-width: 600px;
+      margin: 0 auto;
+      font-size: 1.2rem;
+      line-height: 2;
+      font-weight: 500;
+    }
+
+    /* ============================================================
+       LOGIN SECTION
+       ============================================================ */
+    .login-section {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      background: var(--clr-beige);
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 440px;
+      background: var(--clr-card);
+      border-radius: var(--radius-xl);
+      padding: 40px 32px;
+      box-shadow: var(--shadow-lg);
+      text-align: center;
+    }
+
+    .login-logo {
+      font-size: 2rem;
+      font-weight: 900;
+      color: var(--clr-olive);
+      margin-bottom: 8px;
+    }
+
+    .login-subtitle {
+      color: var(--clr-text-light);
+      margin-bottom: 32px;
+      font-size: 0.9rem;
+    }
+
+    .code-inputs {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      direction: ltr;
+      margin: 20px 0;
+    }
+
+    .code-input {
+      width: 56px;
+      height: 64px;
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: 700;
+      border: 2px solid var(--clr-beige-dark);
+      border-radius: var(--radius-sm);
+      background: var(--clr-warm-white);
+      transition: var(--transition);
+    }
+
+    .code-input:focus {
+      border-color: var(--clr-olive);
+      box-shadow: 0 0 0 3px rgba(74,124,89,0.15);
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--clr-text-light);
+      margin-top: 20px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .back-link:hover {
+      color: var(--clr-olive);
+    }
+
+    /* ============================================================
+       WIZARD
+       ============================================================ */
+    .wizard-section {
+      min-height: 100vh;
+      padding: 40px 20px;
+      background: var(--clr-beige);
+    }
+
+    .wizard-progress {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 40px;
+      flex-wrap: wrap;
+    }
+
+    .wizard-step-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .wizard-dot {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--clr-beige-dark);
+      color: var(--clr-text-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+      transition: var(--transition);
+    }
+
+    .wizard-dot.active {
+      background: var(--clr-olive);
+      color: white;
+      transform: scale(1.15);
+    }
+
+    .wizard-dot.done {
+      background: var(--clr-success);
+      color: white;
+    }
+
+    .wizard-line {
+      width: 40px;
+      height: 3px;
+      background: var(--clr-beige-dark);
+      align-self: center;
+      border-radius: 2px;
+      transition: var(--transition);
+    }
+
+    .wizard-line.done {
+      background: var(--clr-success);
+    }
+
+    .wizard-card {
+      max-width: 600px;
+      margin: 0 auto;
+      background: var(--clr-card);
+      border-radius: var(--radius-xl);
+      padding: 36px 28px;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .wizard-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--clr-olive-dark);
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .wizard-step { display: none; }
+    .wizard-step.active { display: block; animation: fadeIn 0.3s ease; }
+
+    .wizard-nav {
+      display: flex;
+      gap: 12px;
+      justify-content: space-between;
+      margin-top: 28px;
+    }
+
+    /* Item list (meds, appointments, contacts) */
+    .item-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .item-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      background: var(--clr-beige);
+      border-radius: var(--radius-md);
+      gap: 12px;
+    }
+
+    .item-info {
+      flex: 1;
+    }
+
+    .item-name {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .item-detail {
+      font-size: 0.8rem;
+      color: var(--clr-text-light);
+    }
+
+    .item-remove {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(192,57,43,0.1);
+      color: var(--clr-danger);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      transition: var(--transition);
+    }
+
+    .item-remove:hover {
+      background: var(--clr-danger);
+      color: white;
+    }
+
+    /* Photo upload placeholder */
+    .photo-upload {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: var(--clr-beige-dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      cursor: pointer;
+      margin: 0 auto 20px;
+      transition: var(--transition);
+      overflow: hidden;
+      border: 3px dashed var(--clr-olive-light);
+    }
+
+    .photo-upload:hover {
+      background: var(--clr-beige);
+      border-color: var(--clr-olive);
+    }
+
+    .photo-upload img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* ============================================================
+       LINK GENERATED
+       ============================================================ */
+    .link-section {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      background: var(--clr-beige);
+    }
+
+    .link-card {
+      max-width: 500px;
+      width: 100%;
+      background: var(--clr-card);
+      border-radius: var(--radius-xl);
+      padding: 40px 28px;
+      box-shadow: var(--shadow-lg);
+      text-align: center;
+    }
+
+    .link-success-icon {
+      font-size: 4rem;
+      margin-bottom: 16px;
+    }
+
+    .qr-placeholder {
+      width: 200px;
+      height: 200px;
+      margin: 20px auto;
+      background: white;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #eee;
+      overflow: hidden;
+    }
+
+    .qr-placeholder canvas {
+      image-rendering: pixelated;
+    }
+
+    .link-url {
+      background: var(--clr-beige);
+      padding: 14px;
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem;
+      word-break: break-all;
+      direction: ltr;
+      text-align: center;
+      margin: 16px 0;
+      color: var(--clr-text-light);
+    }
+
+    /* ============================================================
+       PARENT VIEW
+       ============================================================ */
+    .parent-section {
+      min-height: 100vh;
+      background: var(--clr-beige);
+    }
+
+    /* Start screen */
+    .parent-start {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      text-align: center;
+    }
+
+    .start-btn {
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--clr-olive) 0%, var(--clr-olive-light) 100%);
+      color: white;
+      font-size: 2rem;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 40px rgba(74,124,89,0.3);
+      transition: var(--transition);
+      margin-bottom: 24px;
+      cursor: pointer;
+      border: none;
+    }
+
+    .start-btn:hover {
+      transform: scale(1.08);
+      box-shadow: 0 12px 48px rgba(74,124,89,0.4);
+    }
+
+    .start-btn:active {
+      transform: scale(0.96);
+    }
+
+    .start-explain {
+      font-size: 0.9rem;
+      color: var(--clr-text-light);
+      max-width: 400px;
+    }
+
+    /* Parent home */
+    .parent-home {
+      padding: 24px 16px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .parent-greeting {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .greeting-text {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--clr-olive-dark);
+    }
+
+    .greeting-name {
+      font-size: 1.8rem;
+      font-weight: 900;
+      color: var(--clr-olive);
+    }
+
+    .parent-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .parent-grid-btn {
+      min-height: 120px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: var(--clr-card);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--clr-text);
+      transition: var(--transition);
+      padding: 16px;
+      text-align: center;
+      cursor: pointer;
+      border: none;
+    }
+
+    .parent-grid-btn:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .parent-grid-btn:active {
+      transform: translateY(0);
+    }
+
+    .parent-grid-btn .icon {
+      font-size: 2.2rem;
+    }
+
+    .parent-grid-btn.emergency {
+      background: linear-gradient(135deg, #C0392B, #E74C3C);
+      color: white;
+      grid-column: 1 / -1;
+    }
+
+    .parent-grid-btn.emergency:hover {
+      box-shadow: 0 8px 24px rgba(192,57,43,0.3);
+    }
+
+    /* Parent sub-views */
+    .parent-subview {
+      display: none;
+      padding: 24px 16px;
+      max-width: 600px;
+      margin: 0 auto;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .parent-subview.active {
+      display: block;
+    }
+
+    .subview-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .subview-back {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--clr-card);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      cursor: pointer;
+      border: none;
+      transition: var(--transition);
+    }
+
+    .subview-back:hover {
+      background: var(--clr-beige-dark);
+    }
+
+    .subview-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--clr-olive-dark);
+    }
+
+    /* Medication list */
+    .med-item {
+      background: var(--clr-card);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .med-icon {
+      font-size: 2rem;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: var(--clr-beige);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .med-info { flex: 1; }
+
+    .med-name {
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .med-time {
+      font-size: 0.85rem;
+      color: var(--clr-text-light);
+    }
+
+    .med-take-btn {
+      min-height: 56px;
+      padding: 10px 20px;
+      border-radius: var(--radius-md);
+      font-weight: 700;
+      font-size: 0.9rem;
+      transition: var(--transition);
+      border: none;
+      cursor: pointer;
+    }
+
+    .med-take-btn.not-taken {
+      background: var(--clr-olive);
+      color: white;
+    }
+
+    .med-take-btn.taken {
+      background: var(--clr-beige);
+      color: var(--clr-success);
+      pointer-events: none;
+    }
+
+    /* Emergency */
+    .emergency-view {
+      text-align: center;
+      padding-top: 40px;
+    }
+
+    .emergency-big-btn {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #C0392B, #E74C3C);
+      color: white;
+      font-size: 1.3rem;
+      font-weight: 900;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin: 30px auto;
+      box-shadow: 0 8px 40px rgba(192,57,43,0.3);
+      transition: var(--transition);
+      cursor: pointer;
+      border: none;
+      animation: pulse 2s infinite;
+    }
+
+    .emergency-big-btn:hover {
+      transform: scale(1.05);
+    }
+
+    .emergency-big-btn .icon {
+      font-size: 3rem;
+    }
+
+    .emergency-contacts {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .emergency-contact-btn {
+      background: var(--clr-card);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      text-align: center;
+      box-shadow: var(--shadow-sm);
+      transition: var(--transition);
+      cursor: pointer;
+      border: none;
+      font-family: inherit;
+      font-size: inherit;
+    }
+
+    .emergency-contact-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .contact-avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: var(--clr-olive-light);
+      color: white;
+      font-size: 1.5rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 10px;
+    }
+
+    /* Day view */
+    .day-view-card {
+      background: var(--clr-card);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow-sm);
+      text-align: center;
+    }
+
+    .day-date {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--clr-olive-dark);
+    }
+
+    .day-time {
+      font-size: 2rem;
+      font-weight: 900;
+      color: var(--clr-olive);
+      margin: 8px 0;
+      direction: ltr;
+      display: inline-block;
+    }
+
+    .day-weather {
+      font-size: 1.1rem;
+      color: var(--clr-text-light);
+    }
+
+    .day-weather .icon {
+      font-size: 2rem;
+    }
+
+    .daily-wisdom {
+      background: linear-gradient(135deg, var(--clr-olive) 0%, var(--clr-olive-light) 100%);
+      color: white;
+      padding: 28px;
+      border-radius: var(--radius-lg);
+      text-align: center;
+      font-size: 1.1rem;
+      line-height: 2;
+      margin-top: 16px;
+    }
+
+    /* Mood check */
+    .mood-section {
+      text-align: center;
+      margin-top: 24px;
+    }
+
+    .mood-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    .mood-options {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .mood-btn {
+      width: 80px;
+      height: 80px;
+      border-radius: var(--radius-lg);
+      background: var(--clr-card);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      font-size: 2rem;
+      cursor: pointer;
+      border: 3px solid transparent;
+      transition: var(--transition);
+    }
+
+    .mood-btn:hover {
+      transform: scale(1.1);
+      border-color: var(--clr-olive);
+    }
+
+    .mood-btn.selected {
+      border-color: var(--clr-olive);
+      background: var(--clr-beige);
+    }
+
+    .mood-label {
+      font-size: 0.55rem;
+      font-weight: 600;
+      color: var(--clr-text-light);
+    }
+
+    /* Wellbeing */
+    .wellbeing-section {
+      margin-top: 24px;
+    }
+
+    .breathing-circle {
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--clr-blue-light), var(--clr-blue));
+      margin: 30px auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+
+    .breathing-circle.active {
+      animation: breathe 6s ease-in-out infinite;
+    }
+
+    .stretch-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .stretch-item {
+      background: var(--clr-card);
+      padding: 18px;
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 0.95rem;
+    }
+
+    .stretch-icon {
+      font-size: 2rem;
+      width: 50px;
+      text-align: center;
+    }
+
+    /* Memory game */
+    .memory-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      max-width: 400px;
+      margin: 20px auto;
+    }
+
+    .memory-card-cell {
+      aspect-ratio: 1;
+      background: var(--clr-olive);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      cursor: pointer;
+      transition: var(--transition);
+      color: white;
+      font-weight: 700;
+      border: none;
+      font-family: inherit;
+    }
+
+    .memory-card-cell.flipped {
+      background: var(--clr-card);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .memory-card-cell.matched {
+      background: var(--clr-success);
+      color: white;
+      pointer-events: none;
+    }
+
+    .game-score {
+      text-align: center;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--clr-olive);
+      margin: 16px 0;
+    }
+
+    /* ============================================================
+       MEDICINE ALARM OVERLAY
+       ============================================================ */
+    .alarm-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(74,124,89,0.97);
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .alarm-overlay.active {
+      display: flex;
+    }
+
+    .alarm-content {
+      text-align: center;
+      color: white;
+      max-width: 500px;
+      width: 100%;
+      animation: slideUp 0.5s ease;
+    }
+
+    .alarm-child-photo {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.2);
+      margin: 0 auto 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      overflow: hidden;
+    }
+
+    .alarm-child-name {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 24px;
+      opacity: 0.9;
+    }
+
+    .alarm-med-name {
+      font-size: 2rem;
+      font-weight: 900;
+      margin-bottom: 8px;
+    }
+
+    .alarm-med-note {
+      font-size: 1.1rem;
+      opacity: 0.9;
+      margin-bottom: 40px;
+    }
+
+    .alarm-icon {
+      font-size: 4rem;
+      margin-bottom: 16px;
+      animation: pulse 1.5s infinite;
+    }
+
+    .alarm-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .alarm-take-btn {
+      min-height: 80px;
+      background: white;
+      color: var(--clr-olive-dark);
+      border-radius: var(--radius-lg);
+      font-size: 1.3rem;
+      font-weight: 800;
+      border: none;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .alarm-take-btn:hover {
+      transform: scale(1.03);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+
+    .alarm-snooze-btn {
+      min-height: 64px;
+      background: rgba(255,255,255,0.15);
+      color: white;
+      border-radius: var(--radius-md);
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .alarm-snooze-btn:hover {
+      background: rgba(255,255,255,0.25);
+    }
+
+    /* ============================================================
+       FAMILY DASHBOARD
+       ============================================================ */
+    .dashboard-section {
+      padding: 24px 16px 100px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .dashboard-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .dashboard-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--clr-olive-dark);
+    }
+
+    .dash-status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .dash-status-card {
+      background: var(--clr-card);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .dash-status-card.alert {
+      border: 2px solid var(--clr-warning);
+      background: #FFFBF0;
+    }
+
+    .dash-med-status {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--clr-beige-dark);
+    }
+
+    .dash-med-status:last-child {
+      border-bottom: none;
+    }
+
+    .status-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .status-dot.taken { background: var(--clr-success); }
+    .status-dot.missed { background: var(--clr-danger); }
+    .status-dot.pending { background: var(--clr-warning); }
+
+    /* Mood chart */
+    .mood-chart-container {
+      background: var(--clr-card);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 24px;
+    }
+
+    .mood-chart-container h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--clr-olive-dark);
+      margin-bottom: 16px;
+    }
+
+    .mood-chart {
+      width: 100%;
+      height: 200px;
+    }
+
+    /* Voice recording section */
+    .voice-section {
+      background: var(--clr-card);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 24px;
+    }
+
+    .voice-section h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--clr-olive-dark);
+      margin-bottom: 8px;
+    }
+
+    .voice-explain {
+      font-size: 0.85rem;
+      color: var(--clr-text-light);
+      margin-bottom: 20px;
+    }
+
+    .voice-med-item {
+      background: var(--clr-beige);
+      border-radius: var(--radius-md);
+      padding: 18px;
+      margin-bottom: 12px;
+    }
+
+    .voice-med-name {
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .voice-controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .voice-btn {
+      min-height: 48px;
+      padding: 10px 18px;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      font-size: 0.85rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: var(--transition);
+      border: none;
+      cursor: pointer;
+    }
+
+    .voice-btn.record {
+      background: var(--clr-danger);
+      color: white;
+    }
+
+    .voice-btn.record.recording {
+      animation: pulse 1s infinite;
+    }
+
+    .voice-btn.play {
+      background: var(--clr-blue);
+      color: white;
+    }
+
+    .voice-btn.save {
+      background: var(--clr-success);
+      color: white;
+    }
+
+    .voice-btn.preview {
+      background: var(--clr-olive);
+      color: white;
+    }
+
+    .recording-timer {
+      font-weight: 700;
+      color: var(--clr-danger);
+      font-size: 1rem;
+      direction: ltr;
+    }
+
+    .voice-status {
+      font-size: 0.8rem;
+      color: var(--clr-success);
+      margin-top: 8px;
+    }
+
+    /* Dashboard edit sections */
+    .dash-edit-section {
+      background: var(--clr-card);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 24px;
+    }
+
+    .dash-edit-section h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--clr-olive-dark);
+      margin-bottom: 16px;
+    }
+
+    /* Alerts panel */
+    .alerts-panel {
+      background: #FFF5F5;
+      border: 2px solid var(--clr-danger);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin-bottom: 24px;
+      display: none;
+    }
+
+    .alerts-panel.has-alerts {
+      display: block;
+    }
+
+    .alert-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(192,57,43,0.1);
+    }
+
+    .alert-item:last-child { border-bottom: none; }
+
+    .alert-icon { font-size: 1.3rem; }
+
+    .alert-text {
+      flex: 1;
+      font-size: 0.9rem;
+      color: var(--clr-danger);
+      font-weight: 600;
+    }
+
+    .alert-dismiss {
+      font-size: 0.8rem;
+      color: var(--clr-text-light);
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-family: inherit;
+      padding: 4px 8px;
+    }
+
+    /* ============================================================
+       FLOATING NAVIGATION
+       ============================================================ */
+    .float-nav {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+      background: var(--clr-card);
+      padding: 10px 16px;
+      border-radius: 50px;
+      box-shadow: var(--shadow-lg);
+      z-index: 900;
+    }
+
+    .float-nav-btn {
+      min-height: 48px;
+      padding: 8px 18px;
+      border-radius: 30px;
+      font-weight: 600;
+      font-size: 0.8rem;
+      transition: var(--transition);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: none;
+      cursor: pointer;
+      background: var(--clr-beige);
+      color: var(--clr-text);
+    }
+
+    .float-nav-btn:hover {
+      background: var(--clr-olive);
+      color: white;
+    }
+
+    .float-nav-btn.active {
+      background: var(--clr-olive);
+      color: white;
+    }
+
+    /* Demo alarm button */
+    .demo-alarm-btn {
+      position: fixed;
+      bottom: 80px;
+      left: 20px;
+      z-index: 800;
+      min-height: 48px;
+      padding: 10px 18px;
+      border-radius: 30px;
+      background: var(--clr-warning);
+      color: var(--clr-text);
+      font-weight: 700;
+      font-size: 0.8rem;
+      box-shadow: var(--shadow-md);
+      border: none;
+      cursor: pointer;
+      transition: var(--transition);
+      display: none;
+    }
+
+    .demo-alarm-btn.visible {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .demo-alarm-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    /* Confirmation dialog */
+    .confirm-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--clr-overlay);
+      z-index: 8000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .confirm-overlay.active {
+      display: flex;
+    }
+
+    .confirm-card {
+      background: var(--clr-card);
+      border-radius: var(--radius-xl);
+      padding: 36px;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      animation: slideUp 0.3s ease;
+    }
+
+    .confirm-icon {
+      font-size: 3rem;
+      margin-bottom: 16px;
+    }
+
+    .confirm-text {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 24px;
+      line-height: 1.7;
+    }
+
+    .confirm-buttons {
+      display: flex;
+      gap: 12px;
+    }
+
+    .confirm-buttons .btn {
+      flex: 1;
+    }
+
+    /* Toast notifications */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .toast {
+      background: var(--clr-card);
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: slideIn 0.3s ease;
+      min-width: 280px;
+      max-width: 420px;
+    }
+
+    .toast.success { border-right: 4px solid var(--clr-success); }
+    .toast.error { border-right: 4px solid var(--clr-danger); }
+    .toast.warning { border-right: 4px solid var(--clr-warning); }
+    .toast.info { border-right: 4px solid var(--clr-blue); }
+
+    .toast-icon { font-size: 1.3rem; }
+    .toast-text { flex: 1; font-size: 0.85rem; font-weight: 500; }
+
+    /* ============================================================
+       RESPONSIVE
+       ============================================================ */
+    @media (max-width: 768px) {
+      .hero-logo { font-size: 2.5rem; }
+      .hero-subtitle { font-size: 1rem; }
+      .stats-grid { grid-template-columns: 1fr; }
+      .steps-grid { grid-template-columns: 1fr; }
+      .parent-grid { gap: 12px; }
+      .parent-grid-btn { min-height: 100px; }
+      .emergency-contacts { grid-template-columns: 1fr 1fr; }
+      .dashboard-header { flex-direction: column; text-align: center; }
+      .float-nav { padding: 8px 12px; gap: 6px; }
+      .float-nav-btn { padding: 8px 12px; font-size: 0.75rem; }
+      .memory-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    @media (max-width: 480px) {
+      .hero-buttons { flex-direction: column; align-items: center; }
+      .hero-buttons .btn { width: 100%; }
+      .parent-grid { grid-template-columns: 1fr; }
+      .mood-options { gap: 8px; }
+      .mood-btn { width: 64px; height: 64px; }
+      .confirm-buttons { flex-direction: column; }
+      .memory-grid { grid-template-columns: repeat(3, 1fr); }
+      .float-nav { width: calc(100% - 32px); justify-content: center; }
+    }
+
+    @media (min-width: 1024px) {
+      .parent-grid { grid-template-columns: repeat(3, 1fr); }
+      .parent-grid-btn.emergency { grid-column: 1 / -1; }
+    }
+
+    /* ============================================================
+       PRINT HIDDEN ELEMENTS
+       ============================================================ */
+    @media print {
+      .font-control, .float-nav, .demo-alarm-btn { display: none !important; }
+    }
+
+    /* ============================================================
+       SCROLLBAR STYLING
+       ============================================================ */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: var(--clr-beige); }
+    ::-webkit-scrollbar-thumb {
+      background: var(--clr-olive-light);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover { background: var(--clr-olive); }
+
+    /* ============================================================
+       DAILY QUESTION
+       ============================================================ */
+    .daily-question-card {
+      background: var(--clr-card);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      box-shadow: var(--shadow-sm);
+      text-align: center;
+      margin-top: 16px;
+    }
+
+    .dq-question {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      line-height: 1.8;
+    }
+
+    .dq-options {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .dq-option {
+      padding: 14px;
+      border-radius: var(--radius-md);
+      background: var(--clr-beige);
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      border: 2px solid transparent;
+      text-align: center;
+      font-family: inherit;
+      font-size: inherit;
+    }
+
+    .dq-option:hover {
+      border-color: var(--clr-olive);
+      background: var(--clr-warm-white);
+    }
+
+    .dq-option.correct {
+      background: #E8F5E9;
+      border-color: var(--clr-success);
+      color: var(--clr-success);
+    }
+
+    .dq-option.wrong {
+      background: #FFEBEE;
+      border-color: var(--clr-danger);
+      color: var(--clr-danger);
+    }
+  </style>
+</head>
+<body>
+  <!-- ============================================================
+       FONT SIZE CONTROLS
+       ============================================================ -->
+  <div class="font-control" role="group" aria-label="التحكّم بحجم الخطّ">
+    <button onclick="changeFontSize(1)" aria-label="تكبير الخطّ">+أ</button>
+    <button onclick="changeFontSize(-1)" aria-label="تصغير الخطّ">−أ</button>
+  </div>
+
+  <!-- Toast container -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <!-- ============================================================
+       SECTION 1: LANDING PAGE
+       ============================================================ -->
+  <div id="landing" class="section active">
+    <!-- Hero -->
+    <div class="landing-hero">
+      <div class="hero-content">
+        <div class="hero-logo" id="heroLogo"></div>
+        <p class="hero-subtitle" id="heroSubtitle"></p>
+        <div class="hero-buttons">
+          <button class="btn btn-lg btn-primary" onclick="showSection('login')" id="btnFamilyLogin"></button>
+          <button class="btn btn-lg btn-outline" onclick="enterDemoMode()" id="btnJudgeDemo"></button>
+        </div>
+      </div>
+      <div class="hero-wave">
+        <svg viewBox="0 0 1440 80" preserveAspectRatio="none">
+          <path d="M0,40 C360,80 720,0 1080,40 C1260,60 1380,30 1440,40 L1440,80 L0,80 Z" fill="var(--clr-warm-white)" />
+        </svg>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-section">
+      <h2 class="section-title" id="statsTitle"></h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-number" data-target="40" data-suffix="%">0</div>
+          <div class="stat-label" id="stat1Label"></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" data-target="65" data-suffix="%">0</div>
+          <div class="stat-label" id="stat2Label"></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" data-target="70" data-suffix="%">0</div>
+          <div class="stat-label" id="stat3Label"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Steps -->
+    <div class="steps-section">
+      <h2 class="section-title" id="stepsTitle"></h2>
+      <p class="section-subtitle" id="stepsSubtitle"></p>
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-icon">🎙️</div>
+          <div class="step-number">1</div>
+          <h3 class="step-title" id="step1Title"></h3>
+          <p class="step-desc" id="step1Desc"></p>
+        </div>
+        <div class="step-card">
+          <div class="step-icon">🔗</div>
+          <div class="step-number">2</div>
+          <h3 class="step-title" id="step2Title"></h3>
+          <p class="step-desc" id="step2Desc"></p>
+        </div>
+        <div class="step-card">
+          <div class="step-icon">💚</div>
+          <div class="step-number">3</div>
+          <h3 class="step-title" id="step3Title"></h3>
+          <p class="step-desc" id="step3Desc"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Story -->
+    <div class="story-section">
+      <h2 class="section-title" id="storyTitle"></h2>
+      <div class="story-card">
+        <div class="story-header">
+          <h3 id="storyName"></h3>
+        </div>
+        <div class="story-body">
+          <div class="story-phase before">
+            <span class="story-phase-label" id="storyBeforeLabel"></span>
+            <p id="storyBefore"></p>
+          </div>
+          <div class="story-phase after">
+            <span class="story-phase-label" id="storyAfterLabel"></span>
+            <p id="storyAfter"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Closing -->
+    <div class="closing-section">
+      <p class="closing-text" id="closingText"></p>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SECTION 2: LOGIN
+       ============================================================ -->
+  <div id="login" class="section">
+    <div class="login-section">
+      <div class="login-card">
+        <div class="login-logo" id="loginLogo"></div>
+        <p class="login-subtitle" id="loginSubtitle"></p>
+
+        <!-- Phone step -->
+        <div id="loginPhoneStep">
+          <div class="form-group">
+            <label class="form-label" for="phoneInput" id="phoneLabel"></label>
+            <input type="tel" id="phoneInput" class="form-input" dir="ltr" style="text-align:center; font-size:1.3rem; letter-spacing:2px" placeholder="07XXXXXXXX" maxlength="10" inputmode="numeric">
+            <div class="form-error" id="phoneError"></div>
+          </div>
+          <button class="btn btn-lg btn-primary btn-block" onclick="sendVerificationCode()" id="btnSendCode"></button>
+        </div>
+
+        <!-- Code step -->
+        <div id="loginCodeStep" class="hidden">
+          <p style="margin-bottom:16px; font-size:0.9rem; color:var(--clr-text-light)" id="codeSentMsg"></p>
+          <div class="code-inputs">
+            <input type="text" class="code-input" maxlength="1" inputmode="numeric" data-index="0">
+            <input type="text" class="code-input" maxlength="1" inputmode="numeric" data-index="1">
+            <input type="text" class="code-input" maxlength="1" inputmode="numeric" data-index="2">
+            <input type="text" class="code-input" maxlength="1" inputmode="numeric" data-index="3">
+          </div>
+          <div class="form-error" id="codeError"></div>
+          <button class="btn btn-lg btn-primary btn-block" onclick="verifyCode()" id="btnVerifyCode"></button>
+        </div>
+
+        <div class="back-link" onclick="showSection('landing')">
+          <span>→</span>
+          <span id="backToHome"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SECTION 3: SETUP WIZARD
+       ============================================================ -->
+  <div id="wizard" class="section">
+    <div class="wizard-section">
+      <!-- Progress -->
+      <div class="wizard-progress" id="wizardProgress"></div>
+
+      <div class="wizard-card">
+        <!-- Step 1: Parent info -->
+        <div class="wizard-step active" data-step="1">
+          <h2 class="wizard-title" id="wizardStep1Title"></h2>
+          <div class="photo-upload" id="parentPhotoUpload" onclick="simulatePhotoUpload('parent')" tabindex="0" role="button" aria-label="رفع صورة">
+            👤
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="parentNameInput" id="parentNameLabel"></label>
+            <input type="text" id="parentNameInput" class="form-input" autocomplete="name">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="parentGenderSelect" id="parentGenderLabel"></label>
+            <select id="parentGenderSelect" class="form-input">
+              <option value="male" id="genderMale"></option>
+              <option value="female" id="genderFemale"></option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Step 2: Medications -->
+        <div class="wizard-step" data-step="2">
+          <h2 class="wizard-title" id="wizardStep2Title"></h2>
+          <div class="item-list" id="medList"></div>
+          <div class="card-flat" style="margin-bottom:16px">
+            <div class="form-group">
+              <label class="form-label" for="medNameInput" id="medNameLabel"></label>
+              <input type="text" id="medNameInput" class="form-input">
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+              <div class="form-group">
+                <label class="form-label" for="medTimeInput" id="medTimeLabel"></label>
+                <input type="time" id="medTimeInput" class="form-input" dir="ltr">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="medDoseInput" id="medDoseLabel"></label>
+                <input type="text" id="medDoseInput" class="form-input">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="medNoteInput" id="medNoteLabel"></label>
+              <input type="text" id="medNoteInput" class="form-input">
+            </div>
+            <button class="btn btn-secondary btn-block" onclick="addMedication()" id="btnAddMed"></button>
+          </div>
+        </div>
+
+        <!-- Step 3: Appointments -->
+        <div class="wizard-step" data-step="3">
+          <h2 class="wizard-title" id="wizardStep3Title"></h2>
+          <div class="item-list" id="appointmentList"></div>
+          <div class="card-flat" style="margin-bottom:16px">
+            <div class="form-group">
+              <label class="form-label" for="apptTitleInput" id="apptTitleLabel"></label>
+              <input type="text" id="apptTitleInput" class="form-input">
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+              <div class="form-group">
+                <label class="form-label" for="apptDateInput" id="apptDateLabel"></label>
+                <input type="date" id="apptDateInput" class="form-input" dir="ltr">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="apptTimeInput" id="apptTimeLabel2"></label>
+                <input type="time" id="apptTimeInput" class="form-input" dir="ltr">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="apptLocationInput" id="apptLocationLabel"></label>
+              <input type="text" id="apptLocationInput" class="form-input">
+            </div>
+            <button class="btn btn-secondary btn-block" onclick="addAppointment()" id="btnAddAppt"></button>
+          </div>
+        </div>
+
+        <!-- Step 4: Family contacts -->
+        <div class="wizard-step" data-step="4">
+          <h2 class="wizard-title" id="wizardStep4Title"></h2>
+          <div class="item-list" id="contactList"></div>
+          <div class="card-flat" style="margin-bottom:16px">
+            <div class="form-group">
+              <label class="form-label" for="contactNameInput" id="contactNameLabel"></label>
+              <input type="text" id="contactNameInput" class="form-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="contactPhoneInput" id="contactPhoneLabel"></label>
+              <input type="tel" id="contactPhoneInput" class="form-input" dir="ltr" style="text-align:center" placeholder="07XXXXXXXX">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="contactRelationInput" id="contactRelationLabel"></label>
+              <input type="text" id="contactRelationInput" class="form-input">
+            </div>
+            <button class="btn btn-secondary btn-block" onclick="addContact()" id="btnAddContact"></button>
+          </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="wizard-nav">
+          <button class="btn btn-ghost" id="wizardPrev" onclick="wizardNavigate(-1)"></button>
+          <button class="btn btn-primary" id="wizardNext" onclick="wizardNavigate(1)"></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SECTION 4: LINK GENERATED
+       ============================================================ -->
+  <div id="linkGenerated" class="section">
+    <div class="link-section">
+      <div class="link-card">
+        <div class="link-success-icon">🎉</div>
+        <h2 id="linkTitle" style="font-size:1.4rem; font-weight:800; color:var(--clr-olive-dark); margin-bottom:8px"></h2>
+        <p id="linkSubtitle" style="color:var(--clr-text-light); font-size:0.9rem; margin-bottom:20px"></p>
+        <div class="qr-placeholder" id="qrCode"></div>
+        <div class="link-url" id="parentLinkUrl"></div>
+        <button class="btn btn-lg btn-primary btn-block" onclick="openAsParent()" id="btnOpenAsParent" style="margin-bottom:12px"></button>
+        <button class="btn btn-lg btn-secondary btn-block" onclick="showSection('dashboard')" id="btnGoToDashboard"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SECTION 5: PARENT VIEW
+       ============================================================ -->
+  <div id="parentView" class="section">
+    <div class="parent-section">
+      <!-- Start screen (audio unlock) -->
+      <div id="parentStart" class="parent-start">
+        <button class="start-btn" onclick="unlockParentAudio()" id="startBtn" aria-label="ابدأ"></button>
+        <p class="start-explain" id="startExplain"></p>
+      </div>
+
+      <!-- Home screen -->
+      <div id="parentHome" class="parent-home hidden">
+        <div class="parent-greeting">
+          <p class="greeting-text" id="greetingText"></p>
+          <p class="greeting-name" id="greetingName"></p>
+        </div>
+        <div class="parent-grid" id="parentGrid">
+          <!-- Buttons injected by JS -->
+        </div>
+
+        <!-- Wellbeing section (mood + breathing + stretching) -->
+        <div class="mood-section" style="margin-top:32px">
+          <h3 class="mood-title" id="moodTitle"></h3>
+          <div class="mood-options" id="moodOptions">
+            <!-- Injected by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Sub-views -->
+      <div id="parentMeds" class="parent-subview">
+        <div class="subview-header">
+          <button class="subview-back" onclick="parentBack()" aria-label="رجوع">→</button>
+          <h2 class="subview-title" id="medsViewTitle"></h2>
+        </div>
+        <div id="parentMedsList"></div>
+        <div class="day-view-card" style="margin-top:20px">
+          <h3 style="font-size:1rem; font-weight:700; margin-bottom:12px" id="medLogTitle"></h3>
+          <div id="medLog" style="text-align:right; font-size:0.85rem; color:var(--clr-text-light)"></div>
+        </div>
+      </div>
+
+      <div id="parentAppointments" class="parent-subview">
+        <div class="subview-header">
+          <button class="subview-back" onclick="parentBack()" aria-label="رجوع">→</button>
+          <h2 class="subview-title" id="apptsViewTitle"></h2>
+        </div>
+        <div id="parentApptsList"></div>
+      </div>
+
+      <div id="parentEmergency" class="parent-subview">
+        <div class="subview-header">
+          <button class="subview-back" onclick="parentBack()" aria-label="رجوع">→</button>
+          <h2 class="subview-title" id="emergencyViewTitle"></h2>
+        </div>
+        <div class="emergency-view" id="emergencyContent">
+          <!-- Injected by JS -->
+        </div>
+      </div>
+
+      <div id="parentContacts" class="parent-subview">
+        <div class="subview-header">
+          <button class="subview-back" onclick="parentBack()" aria-label="رجوع">→</button>
+          <h2 class="subview-title" id="contactsViewTitle"></h2>
+        </div>
+        <div class="emergency-contacts" id="parentContactsList"></div>
+      </div>
+
+      <div id="parentDay" class="parent-subview">
+        <div class="subview-header">
+          <button class="subview-back" onclick="parentBack()" aria-label="رجوع">→</button>
+          <h2 class="subview-title" id="dayViewTitle"></h2>
+        </div>
+        <div class="day-view-card" id="dayInfo">
+          <!-- Injected by JS -->
+        </div>
+        <div class="daily-wisdom" id="dailyWisdomCard"></div>
+      </div>
+
+      <div id="parentWellbeing" class="parent-subview">
+        <div class="subview-header">
+          <button class="subview-back" onclick="parentBack()" aria-label="رجوع">→</button>
+          <h2 class="subview-title" id="wellbeingViewTitle"></h2>
+        </div>
+        <div class="wellbeing-section" id="wellbeingContent"></div>
+      </div>
+
+      <div id="parentGames" class="parent-subview">
+        <div class="subview-header">
+          <button class="subview-back" onclick="parentBack()" aria-label="رجوع">→</button>
+          <h2 class="subview-title" id="gamesViewTitle"></h2>
+        </div>
+        <div id="gamesContent"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SECTION 6: FAMILY DASHBOARD
+       ============================================================ -->
+  <div id="dashboard" class="section">
+    <div class="dashboard-section">
+      <div class="dashboard-header">
+        <h1 class="dashboard-title" id="dashboardTitle"></h1>
+        <div style="display:flex; gap:8px; flex-wrap:wrap">
+          <button class="btn btn-ghost" onclick="resetDemoData()" id="btnResetDemo" style="font-size:0.75rem">🔄</button>
+          <button class="btn btn-ghost" onclick="logout()" id="btnLogout" style="font-size:0.75rem"></button>
+        </div>
+      </div>
+
+      <!-- Alerts -->
+      <div class="alerts-panel" id="alertsPanel">
+        <h3 style="font-size:1rem; font-weight:700; color:var(--clr-danger); margin-bottom:12px" id="alertsTitle"></h3>
+        <div id="alertsList"></div>
+      </div>
+
+      <!-- Today's status -->
+      <h3 style="font-size:1rem; font-weight:700; margin-bottom:12px" id="todayStatusTitle"></h3>
+      <div class="dash-status-grid" id="dashStatusGrid"></div>
+
+      <!-- Weekly mood chart -->
+      <div class="mood-chart-container">
+        <h3 id="moodChartTitle"></h3>
+        <svg class="mood-chart" id="moodChart" viewBox="0 0 700 200"></svg>
+      </div>
+
+      <!-- Voice recording -->
+      <div class="voice-section">
+        <h3 id="voiceSectionTitle"></h3>
+        <p class="voice-explain" id="voiceExplain"></p>
+        <div id="voiceMedList"></div>
+      </div>
+
+      <!-- Edit sections (collapsible) -->
+      <div class="dash-edit-section">
+        <h3 id="editMedsTitle"></h3>
+        <div class="item-list" id="dashMedList"></div>
+        <button class="btn btn-secondary" onclick="showSection('wizard')" id="btnEditMeds" style="font-size:0.85rem"></button>
+      </div>
+
+      <div class="dash-edit-section">
+        <h3 id="editApptsTitle"></h3>
+        <div class="item-list" id="dashApptList"></div>
+      </div>
+
+      <div class="dash-edit-section">
+        <h3 id="editContactsTitle"></h3>
+        <div class="item-list" id="dashContactList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       MEDICINE ALARM OVERLAY
+       ============================================================ -->
+  <div class="alarm-overlay" id="alarmOverlay" role="alertdialog" aria-label="تذكير الدواء">
+    <div class="alarm-content">
+      <div class="alarm-icon">💊</div>
+      <div class="alarm-child-photo" id="alarmChildPhoto"></div>
+      <div class="alarm-child-name" id="alarmChildName"></div>
+      <div class="alarm-med-name" id="alarmMedName"></div>
+      <div class="alarm-med-note" id="alarmMedNote"></div>
+      <div class="alarm-buttons">
+        <button class="alarm-take-btn" onclick="alarmTakeMed()" id="alarmTakeBtn"></button>
+        <button class="alarm-snooze-btn" onclick="alarmSnooze()" id="alarmSnoozeBtn"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirmation overlay -->
+  <div class="confirm-overlay" id="confirmOverlay">
+    <div class="confirm-card">
+      <div class="confirm-icon" id="confirmIcon"></div>
+      <div class="confirm-text" id="confirmText"></div>
+      <div class="confirm-buttons" id="confirmButtons"></div>
+    </div>
+  </div>
+
+  <!-- Floating navigation (shown in parent/dashboard) -->
+  <div class="float-nav hidden" id="floatNav">
+    <button class="float-nav-btn" onclick="showSection('parentView')" id="floatParent">👤</button>
+    <button class="float-nav-btn" onclick="showSection('dashboard')" id="floatDashboard">📊</button>
+  </div>
+
+  <!-- Demo alarm trigger button -->
+  <button class="demo-alarm-btn" id="demoAlarmBtn" onclick="triggerDemoAlarm()">
+    🔔 <span id="demoAlarmText"></span>
+  </button>
+
+  <script>
+    // ============================================================
+    // TEXT OBJECT — All Arabic strings in one place
+    // ============================================================
+    const TEXT = {
+      // App
+      appName: 'رفيق',
+      appTagline: 'رفيق والديك',
+
+      // Landing hero
+      heroTitle: 'رفيق',
+      heroSubtitle: 'رفيق يذكّر والديك بأدويتهم بصوتك أنت، ويطمئنك أنّهم بخير.',
+      btnFamilyLogin: 'دخول العائلة',
+      btnJudgeDemo: 'جرّب كحَكَم (عرض تجريبي)',
+
+      // Stats
+      statsTitle: 'المشكلة التي نحلّها',
+      stat1Label: 'من كبار السنّ في الأردنّ يعيشون بعيدًا عن أبنائهم',
+      stat2Label: 'ينسون جرعة دواء واحدة على الأقلّ أسبوعيًّا',
+      stat3Label: 'من الأبناء يشعرون بالقلق اليوميّ على والديهم',
+
+      // Steps
+      stepsTitle: 'كيف يعمل رفيق؟',
+      stepsSubtitle: 'ثلاث خطوات بسيطة تربطك بوالديك.',
+      step1Title: 'سجّل صوتك',
+      step1Desc: 'سجّل رسالة صوتية قصيرة لكلّ دواء يأخذه والدك.',
+      step2Title: 'أرسل الرابط',
+      step2Desc: 'أرسل رابطًا بسيطًا لوالدك عبر واتساب، بدون كلمة مرور.',
+      step3Title: 'اطمئنّ',
+      step3Desc: 'تابع حالة والدك من لوحة التحكّم وتلقَّ تنبيهات فورية.',
+
+      // Story
+      storyTitle: 'قصّة حقيقية',
+      storyName: 'الحاجّ أبو أحمد وابنته ريم',
+      storyBeforeLabel: 'قبل رفيق',
+      storyBefore: 'الحاجّ أبو أحمد (٧٤ عامًا) يعيش وحده في عمّان. ابنته ريم تسكن في إربد. كلّ يوم تتّصل به لتذكّره بأدويته، لكنّه أحيانًا لا يردّ على الهاتف، فتقضي ساعات وهي قلقة.',
+      storyAfterLabel: 'بعد رفيق',
+      storyAfter: 'الآن، عند موعد الدواء، يسمع أبو أحمد صوت ريم من الجهاز: «يا بابا، حان موعد دواء الضغط.» يضغط زرًّا واحدًا كبيرًا، وريم تطمئنّ فورًا من هاتفها.',
+
+      // Closing
+      closingText: 'رفيق ليس مجرّد تطبيق. رفيق شخصٌ يعتني بوالديك حين لا تستطيع أن تكون بجانبهما.',
+
+      // Login
+      loginLogo: 'رفيق',
+      loginSubtitle: 'سجّل دخولك لإعداد حساب والدك.',
+      phoneLabel: 'رقم الهاتف',
+      phonePlaceholder: '07XXXXXXXX',
+      btnSendCode: 'إرسال رمز التحقّق',
+      codeSentMsg: 'أرسلنا رمز التحقّق إلى هاتفك. أدخل أيّ ٤ أرقام للمتابعة.',
+      btnVerifyCode: 'تحقّق',
+      phoneError: 'يرجى إدخال رقم هاتف أردنيّ صحيح يبدأ بـ 07.',
+      codeError: 'يرجى إدخال ٤ أرقام.',
+      backToHome: 'العودة إلى الصفحة الرئيسية',
+
+      // Wizard
+      wizardStep1Title: 'معلومات الوالد',
+      parentNameLabel: 'اسم الوالد (كما تناديه)',
+      parentGenderLabel: 'الوالد',
+      genderMale: 'أب (ذكر)',
+      genderFemale: 'أمّ (أنثى)',
+      wizardStep2Title: 'الأدوية',
+      medNameLabel: 'اسم الدواء',
+      medTimeLabel: 'الوقت',
+      medDoseLabel: 'الجرعة',
+      medNoteLabel: 'ملاحظة (مثلًا: بعد الطعام)',
+      btnAddMed: '+ إضافة دواء',
+      wizardStep3Title: 'المواعيد',
+      apptTitleLabel: 'عنوان الموعد',
+      apptDateLabel: 'التاريخ',
+      apptTimeLabel: 'الوقت',
+      apptLocationLabel: 'المكان',
+      btnAddAppt: '+ إضافة موعد',
+      wizardStep4Title: 'جهات الاتّصال العائلية',
+      contactNameLabel: 'الاسم',
+      contactPhoneLabel: 'رقم الهاتف',
+      contactRelationLabel: 'صلة القرابة (مثلًا: ابنة، ابن)',
+      btnAddContact: '+ إضافة جهة اتّصال',
+      wizardPrev: '→ السابق',
+      wizardNext: 'التالي ←',
+      wizardFinish: 'إنهاء الإعداد ✓',
+
+      // Link generated
+      linkTitle: 'تمّ إنشاء رابط الوالد بنجاح!',
+      linkSubtitle: 'أرسل هذا الرابط لوالدك عبر واتساب أو رسالة نصّية.',
+      btnOpenAsParent: 'افتح كأنّني والدي',
+      btnGoToDashboard: 'الذهاب إلى لوحة التحكّم',
+
+      // Parent view
+      startBtnText: 'ابدأ',
+      startExplain: 'اضغط هنا مرّة واحدة لتشغيل التنبيهات الصوتية.',
+      goodMorning: 'صباحُ الخير',
+      goodEvening: 'مساءُ الخير',
+      goodAfternoon: 'مساءُ الخير',
+
+      // Parent grid buttons
+      parentBtnMeds: 'أدويتي',
+      parentBtnMedsIcon: '💊',
+      parentBtnAppts: 'مواعيدي',
+      parentBtnApptsIcon: '📅',
+      parentBtnEmergency: 'الطوارئ',
+      parentBtnEmergencyIcon: '🆘',
+      parentBtnContacts: 'اتّصل بعائلتي',
+      parentBtnContactsIcon: '👨‍👩‍👧',
+      parentBtnDay: 'يومي',
+      parentBtnDayIcon: '🌤️',
+
+      // Medication
+      tookMedicine: 'أخذتُ الدواء ✓',
+      alreadyTaken: 'تمّ ✓',
+      medLogTitle: 'سجلّ اليوم',
+      medTakenAt: 'أُخذ في',
+      medsViewTitle: '💊 أدويتي',
+
+      // Appointments
+      apptsViewTitle: '📅 مواعيدي',
+      noAppointments: 'لا توجد مواعيد قادمة.',
+
+      // Emergency
+      emergencyViewTitle: '🆘 الطوارئ',
+      emergencyBtnText: 'طلب مساعدة',
+      emergencyConfirm1: 'هل تحتاج فعلًا إلى مساعدة طارئة؟',
+      emergencyConfirm2: 'سنتّصل بالطوارئ وعائلتك الآن. هل أنت متأكّد؟',
+      emergencyYes: 'نعم، أحتاج مساعدة',
+      emergencyNo: 'لا، أنا بخير',
+      emergencyCalling: 'جارٍ الاتّصال بالطوارئ (911)...',
+      emergencySendingLocation: 'جارٍ إرسال موقعك إلى عائلتك...',
+      emergencyFamilyNotified: 'تمّ إبلاغ عائلتك.',
+      emergencyNumber: '911',
+
+      // Contacts
+      contactsViewTitle: '👨‍👩‍👧 اتّصل بعائلتي',
+      callBtn: 'اتّصل',
+
+      // Day view
+      dayViewTitle: '🌤️ يومي',
+      weatherSimulated: 'عمّان — مشمس جزئيًّا، ٢٤°م',
+      weatherIcon: '⛅',
+
+      // Wisdoms
+      wisdoms: [
+        'مَن صبر ظفر.',
+        'العلم نور والجهل ظلام.',
+        'الصحّة تاجٌ على رؤوس الأصحّاء لا يراه إلّا المرضى.',
+        'إذا أردت أن تُطاع فأمر بما يُستطاع.',
+        'رُبَّ أخٍ لك لم تلده أمّك.',
+        'الابتسامة صدقة.',
+        'خيرُ الكلام ما قلّ ودلّ.',
+      ],
+
+      // Mood
+      moodTitle: 'كيف حالك اليوم؟',
+      moods: [
+        { emoji: '😊', label: 'ممتاز', value: 5 },
+        { emoji: '🙂', label: 'جيّد', value: 4 },
+        { emoji: '😐', label: 'عاديّ', value: 3 },
+        { emoji: '😔', label: 'حزين', value: 2 },
+        { emoji: '😢', label: 'سيّئ', value: 1 },
+      ],
+      moodSaved: 'شكرًا لك! سجّلنا حالتك المزاجية.',
+
+      // Wellbeing
+      wellbeingViewTitle: '🧘 صحّتك',
+      breathingTitle: 'تمرين التنفّس',
+      breathingInhale: 'اشهق...',
+      breathingExhale: 'ازفر...',
+      breathingHold: 'أمسك...',
+      breathingStart: 'ابدأ التمرين',
+      breathingStop: 'أوقف التمرين',
+      stretchTitle: 'تمارين خفيفة',
+      stretches: [
+        { icon: '🙆', text: 'ارفع يديك للأعلى ببطء وعدّ حتّى خمسة، ثمّ أنزلهما.' },
+        { icon: '🚶', text: 'قم بالمشي في المكان لمدّة دقيقة واحدة.' },
+        { icon: '🧘', text: 'أدر رأسك ببطء إلى اليمين ثمّ إلى اليسار، خمس مرّات.' },
+        { icon: '💪', text: 'اضغط يديك معًا أمام صدرك وعدّ حتّى عشرة.' },
+      ],
+
+      // Games
+      gamesViewTitle: '🧠 تمارين ذهنية',
+      memoryGameTitle: 'لعبة الذاكرة',
+      memoryGameNew: 'لعبة جديدة',
+      memoryMoves: 'المحاولات',
+      memoryWin: 'أحسنت! أتممت اللعبة! 🎉',
+      dailyQuestionTitle: 'سؤال اليوم',
+      dailyQuestions: [
+        { q: 'ما عاصمة الأردنّ؟', options: ['عمّان', 'إربد', 'الزرقاء', 'العقبة'], correct: 0 },
+        { q: 'كم عدد أركان الإسلام؟', options: ['ثلاثة', 'أربعة', 'خمسة', 'ستّة'], correct: 2 },
+        { q: 'ما أطول نهر في العالم؟', options: ['النيل', 'الأمازون', 'دجلة', 'الفرات'], correct: 0 },
+        { q: 'في أيّ شهر يأتي شهر رمضان هذا العام؟', options: ['يختلف كلّ عام', 'دائمًا في يناير', 'دائمًا في مارس', 'دائمًا في ديسمبر'], correct: 0 },
+        { q: 'ما عملة الأردنّ؟', options: ['الدينار', 'الريال', 'الدرهم', 'الليرة'], correct: 0 },
+        { q: 'كم كوكبًا في مجموعتنا الشمسية؟', options: ['سبعة', 'ثمانية', 'تسعة', 'عشرة'], correct: 1 },
+        { q: 'ما أصغر دولة في العالم؟', options: ['الفاتيكان', 'موناكو', 'لوكسمبورغ', 'مالطا'], correct: 0 },
+      ],
+
+      // Alarm
+      alarmTakeBtn: 'أخذتُ الدواء ✓',
+      alarmSnoozeBtn: 'ذكّرني بعد ١٠ دقائق',
+      alarmGreetingMorning: 'صباحُ الخير يا {name}، حان موعد دواء {medicine}. {note}',
+      alarmGreetingEvening: 'مساءُ الخير يا {name}، حان موعد دواء {medicine}. {note}',
+      alarmChildReminder: '{childName} تذكّرك: حان موعد دواء {medicine}.',
+      alarmChildLabel: '{childName} تذكّرك 💚',
+      alarmMissedAlert: '{name} لم يأخذ دواء {medicine} بعد.',
+
+      // Voice recording
+      voiceSectionTitle: 'سجّل رسالتك لوالدك',
+      voiceExplain: 'سنسجّل صوتك ليسمعك والدك عند موعد الدواء.',
+      voiceRecord: '🎙️ تسجيل',
+      voiceStop: '⏹️ إيقاف',
+      voicePlay: '▶️ تشغيل',
+      voiceReRecord: '🔄 إعادة تسجيل',
+      voiceSave: '💾 حفظ',
+      voicePreview: '🔊 اسمع كيف سيسمعها والدي',
+      voiceSaved: 'تمّ حفظ التسجيل بنجاح!',
+      voiceMicDenied: 'لم يُسمح بالوصول إلى الميكروفون. يرجى السماح بالوصول من إعدادات المتصفّح.',
+      voiceRecording: 'جارٍ التسجيل...',
+
+      // Dashboard
+      dashboardTitle: 'لوحة تحكّم العائلة',
+      todayStatusTitle: 'حالة اليوم',
+      medTaken: 'تمّ تناوله',
+      medMissed: 'لم يُؤخذ',
+      medPending: 'في الانتظار',
+      lastActivity: 'آخر نشاط',
+      alertsTitle: '⚠️ تنبيهات',
+      alertDismiss: 'تجاهل',
+      moodChartTitle: 'الحالة المزاجية — الأسبوع الماضي',
+      editMedsTitle: 'تعديل الأدوية',
+      editApptsTitle: 'تعديل المواعيد',
+      editContactsTitle: 'تعديل جهات الاتّصال',
+      btnEditMeds: 'تعديل من المعالج',
+      btnLogout: 'تسجيل الخروج',
+      btnResetDemo: 'إعادة ضبط البيانات التجريبية',
+
+      // Float nav
+      floatParent: 'شاشة الوالد',
+      floatDashboard: 'لوحة التحكّم',
+
+      // Demo
+      demoAlarmText: 'شغّل منبّه الدواء الآن',
+
+      // Errors
+      errorMicDenied: 'لم يُسمح بالوصول إلى الميكروفون. يرجى السماح من إعدادات المتصفّح.',
+      errorNoArabicVoice: 'لا يتوفّر صوت عربيّ على جهازك. سنعرض التذكير كتابةً.',
+      errorAudioBlocked: 'المتصفّح يمنع تشغيل الصوت. اضغط زرّ «ابدأ» أوّلًا.',
+      errorGeneric: 'حدث خطأ. يرجى المحاولة مرّة أخرى.',
+
+      // Additional Dashboard & Alarm Strings
+      chartDays: ['السبت', 'الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'],
+      chartEmpty: 'لا توجد بيانات كافية لعرض المخطّط.',
+      voiceHasRecording: 'مسجّل بصوت العائلة ✓',
+      voiceNoRecording: 'صوت افتراضيّ (لم يُسجّل بعد)',
+      voicePreviewChild: 'معاينة تذكير الدواء',
+      logoutConfirm: 'هل أنت متأكّد من رغبتك في تسجيل الخروج؟',
+      resetDemoConfirm: 'هل تريد إعادة ضبط الحساب وتحميل بيانات العرض التجريبيّ (الحاجّ أبو أحمد وابنته ريم)؟',
+      alarmSnoozeToast: 'سوف نذكّرك مجدّدًا بعد ١٠ دقائق.',
+      demoWelcome: 'مرحبًا بك في العرض التجريبيّ الخاصّ بالحكّام!',
+      noAlerts: 'لا توجد تنبيهات حاليّة، كلّ شيء على ما يرام. 💚',
+      sampleChildName: 'ريم',
+
+      // Misc
+      remove: '✕',
+      noData: 'لا توجد بيانات بعد.',
+      confirm: 'تأكيد',
+      cancel: 'إلغاء',
+      close: 'إغلاق',
+      saved: 'تمّ الحفظ.',
+    };
+
+    // ============================================================
+    // STATE MANAGEMENT
+    // ============================================================
+    const DEFAULT_STATE = {
+      loggedIn: false,
+      phone: '',
+      parentName: '',
+      parentGender: 'male',
+      parentPhoto: '',
+      medications: [],
+      appointments: [],
+      contacts: [],
+      recordings: {},
+      moods: [],
+      alerts: [],
+      medLog: {},
+      currentView: 'landing',
+      wizardStep: 1,
+      fontSize: 22,
+      isDemo: false,
+      audioUnlocked: false,
+      alarmSnooze: {},
+      alarmRepeatCount: {},
+    };
+
+    let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+    let alarmInterval = null;
+    let currentAlarmMed = null;
+    let breathingInterval = null;
+    let memoryCards = [];
+    let memoryFlipped = [];
+    let memoryMatched = [];
+    let memoryMoves = 0;
+    let memoryLocked = false;
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let recordingTimerInterval = null;
+    let clockInterval = null;
+
+    // ============================================================
+    // INITIALIZATION
+    // ============================================================
+    function init() {
+      loadState();
+      applyText();
+      applyFontSize();
+
+      if (state.loggedIn) {
+        if (state.currentView === 'parentView' || state.currentView === 'dashboard') {
+          showSection(state.currentView, true);
+        } else {
+          showSection('dashboard', true);
+        }
+      } else {
+        showSection('landing', true);
+      }
+
+      // Start animated counters when landing is visible
+      if (state.currentView === 'landing' || !state.loggedIn) {
+        startCounters();
+      }
+
+      // Code input auto-advance
+      setupCodeInputs();
+    }
+
+    function loadState() {
+      try {
+        const saved = localStorage.getItem('rafeeq_state');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          state = { ...JSON.parse(JSON.stringify(DEFAULT_STATE)), ...parsed };
+        }
+      } catch (e) {
+        console.error('Failed to load state:', e);
+      }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem('rafeeq_state', JSON.stringify(state));
+      } catch (e) {
+        console.error('Failed to save state:', e);
+      }
+    }
+
+    // ============================================================
+    // APPLY TEXT TO DOM
+    // ============================================================
+    function applyText() {
+      const setById = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
+      };
+
+      // Landing
+      setById('heroLogo', TEXT.heroTitle);
+      setById('heroSubtitle', TEXT.heroSubtitle);
+      setById('btnFamilyLogin', TEXT.btnFamilyLogin);
+      setById('btnJudgeDemo', TEXT.btnJudgeDemo);
+      setById('statsTitle', TEXT.statsTitle);
+      setById('stat1Label', TEXT.stat1Label);
+      setById('stat2Label', TEXT.stat2Label);
+      setById('stat3Label', TEXT.stat3Label);
+      setById('stepsTitle', TEXT.stepsTitle);
+      setById('stepsSubtitle', TEXT.stepsSubtitle);
+      setById('step1Title', TEXT.step1Title);
+      setById('step1Desc', TEXT.step1Desc);
+      setById('step2Title', TEXT.step2Title);
+      setById('step2Desc', TEXT.step2Desc);
+      setById('step3Title', TEXT.step3Title);
+      setById('step3Desc', TEXT.step3Desc);
+      setById('storyTitle', TEXT.storyTitle);
+      setById('storyName', TEXT.storyName);
+      setById('storyBeforeLabel', TEXT.storyBeforeLabel);
+      setById('storyBefore', TEXT.storyBefore);
+      setById('storyAfterLabel', TEXT.storyAfterLabel);
+      setById('storyAfter', TEXT.storyAfter);
+      setById('closingText', TEXT.closingText);
+
+      // Login
+      setById('loginLogo', TEXT.loginLogo);
+      setById('loginSubtitle', TEXT.loginSubtitle);
+      setById('phoneLabel', TEXT.phoneLabel);
+      setById('btnSendCode', TEXT.btnSendCode);
+      setById('codeSentMsg', TEXT.codeSentMsg);
+      setById('btnVerifyCode', TEXT.btnVerifyCode);
+      setById('phoneError', TEXT.phoneError);
+      setById('codeError', TEXT.codeError);
+      setById('backToHome', TEXT.backToHome);
+
+      // Wizard
+      setById('wizardStep1Title', TEXT.wizardStep1Title);
+      setById('parentNameLabel', TEXT.parentNameLabel);
+      setById('parentGenderLabel', TEXT.parentGenderLabel);
+      setById('genderMale', TEXT.genderMale);
+      setById('genderFemale', TEXT.genderFemale);
+      setById('wizardStep2Title', TEXT.wizardStep2Title);
+      setById('medNameLabel', TEXT.medNameLabel);
+      setById('medTimeLabel', TEXT.medTimeLabel);
+      setById('medDoseLabel', TEXT.medDoseLabel);
+      setById('medNoteLabel', TEXT.medNoteLabel);
+      setById('btnAddMed', TEXT.btnAddMed);
+      setById('wizardStep3Title', TEXT.wizardStep3Title);
+      setById('apptTitleLabel', TEXT.apptTitleLabel);
+      setById('apptDateLabel', TEXT.apptDateLabel);
+      setById('apptTimeLabel2', TEXT.apptTimeLabel);
+      setById('apptLocationLabel', TEXT.apptLocationLabel);
+      setById('btnAddAppt', TEXT.btnAddAppt);
+      setById('wizardStep4Title', TEXT.wizardStep4Title);
+      setById('contactNameLabel', TEXT.contactNameLabel);
+      setById('contactPhoneLabel', TEXT.contactPhoneLabel);
+      setById('contactRelationLabel', TEXT.contactRelationLabel);
+      setById('btnAddContact', TEXT.btnAddContact);
+
+      // Link
+      setById('linkTitle', TEXT.linkTitle);
+      setById('linkSubtitle', TEXT.linkSubtitle);
+      setById('btnOpenAsParent', TEXT.btnOpenAsParent);
+      setById('btnGoToDashboard', TEXT.btnGoToDashboard);
+
+      // Parent
+      setById('startBtn', TEXT.startBtnText);
+      setById('startExplain', TEXT.startExplain);
+      setById('medsViewTitle', TEXT.medsViewTitle);
+      setById('medLogTitle', TEXT.medLogTitle);
+      setById('apptsViewTitle', TEXT.apptsViewTitle);
+      setById('emergencyViewTitle', TEXT.emergencyViewTitle);
+      setById('contactsViewTitle', TEXT.contactsViewTitle);
+      setById('dayViewTitle', TEXT.dayViewTitle);
+      setById('wellbeingViewTitle', TEXT.wellbeingViewTitle);
+      setById('gamesViewTitle', TEXT.gamesViewTitle);
+      setById('moodTitle', TEXT.moodTitle);
+
+      // Alarm
+      setById('alarmTakeBtn', TEXT.alarmTakeBtn);
+      setById('alarmSnoozeBtn', TEXT.alarmSnoozeBtn);
+
+      // Dashboard
+      setById('dashboardTitle', TEXT.dashboardTitle);
+      setById('todayStatusTitle', TEXT.todayStatusTitle);
+      setById('moodChartTitle', TEXT.moodChartTitle);
+      setById('voiceSectionTitle', TEXT.voiceSectionTitle);
+      setById('voiceExplain', TEXT.voiceExplain);
+      setById('editMedsTitle', TEXT.editMedsTitle);
+      setById('editApptsTitle', TEXT.editApptsTitle);
+      setById('editContactsTitle', TEXT.editContactsTitle);
+      setById('btnEditMeds', TEXT.btnEditMeds);
+      setById('btnLogout', TEXT.btnLogout);
+      setById('btnResetDemo', TEXT.btnResetDemo);
+      setById('alertsTitle', TEXT.alertsTitle);
+
+      // Float nav
+      setById('floatParent', '👤 ' + TEXT.floatParent);
+      setById('floatDashboard', '📊 ' + TEXT.floatDashboard);
+
+      // Demo
+      setById('demoAlarmText', TEXT.demoAlarmText);
+
+      // Wizard nav
+      document.getElementById('wizardPrev').textContent = TEXT.wizardPrev;
+      document.getElementById('wizardNext').textContent = TEXT.wizardNext;
+    }
+
+    // ============================================================
+    // FONT SIZE
+    // ============================================================
+    function changeFontSize(delta) {
+      state.fontSize = Math.max(16, Math.min(32, state.fontSize + (delta * 2)));
+      applyFontSize();
+      saveState();
+    }
+
+    function applyFontSize() {
+      document.documentElement.style.setProperty('--font-size-base', state.fontSize + 'px');
+    }
+
+    // ============================================================
+    // SECTION NAVIGATION
+    // ============================================================
+    function showSection(id, skipSave) {
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      const section = document.getElementById(id);
+      if (section) section.classList.add('active');
+
+      // Float nav visibility
+      const floatNav = document.getElementById('floatNav');
+      const demoBtn = document.getElementById('demoAlarmBtn');
+      if (state.loggedIn && (id === 'parentView' || id === 'dashboard')) {
+        floatNav.classList.remove('hidden');
+        demoBtn.classList.add('visible');
+        // Highlight active tab
+        document.querySelectorAll('.float-nav-btn').forEach(b => b.classList.remove('active'));
+        if (id === 'parentView') document.getElementById('floatParent').classList.add('active');
+        if (id === 'dashboard') document.getElementById('floatDashboard').classList.add('active');
+      } else {
+        floatNav.classList.add('hidden');
+        demoBtn.classList.remove('visible');
+      }
+
+      // Section-specific setup
+      if (id === 'parentView') {
+        setupParentView();
+        startMedicineChecker();
+      }
+      if (id === 'dashboard') {
+        renderDashboard();
+        startMedicineChecker();
+      }
+      if (id === 'wizard') {
+        renderWizardProgress();
+        renderWizardStep();
+        populateWizardFields();
+      }
+      if (id === 'linkGenerated') {
+        generateQRCode();
+      }
+
+      state.currentView = id;
+      if (!skipSave) saveState();
+      window.scrollTo(0, 0);
+    }
+
+    // ============================================================
+    // ANIMATED COUNTERS
+    // ============================================================
+    function startCounters() {
+      const counters = document.querySelectorAll('.stat-number');
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            animateCounter(entry.target);
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.5 });
+      counters.forEach(c => observer.observe(c));
+    }
+
+    function animateCounter(el) {
+      const target = parseInt(el.dataset.target);
+      const suffix = el.dataset.suffix || '';
+      let current = 0;
+      const step = Math.ceil(target / 40);
+      const interval = setInterval(() => {
+        current += step;
+        if (current >= target) {
+          current = target;
+          clearInterval(interval);
+        }
+        el.textContent = current + suffix;
+      }, 40);
+    }
+
+    // ============================================================
+    // LOGIN
+    // ============================================================
+    function sendVerificationCode() {
+      const phone = document.getElementById('phoneInput').value.trim();
+      const phoneError = document.getElementById('phoneError');
+      const phoneInput = document.getElementById('phoneInput');
+
+      if (!/^07\d{8}$/.test(phone)) {
+        phoneError.classList.add('visible');
+        phoneInput.classList.add('error');
+        setTimeout(() => phoneInput.classList.remove('error'), 500);
+        return;
+      }
+
+      phoneError.classList.remove('visible');
+      state.phone = phone;
+
+      document.getElementById('loginPhoneStep').classList.add('hidden');
+      document.getElementById('loginCodeStep').classList.remove('hidden');
+      document.querySelector('.code-input').focus();
+    }
+
+    function setupCodeInputs() {
+      const inputs = document.querySelectorAll('.code-input');
+      inputs.forEach((input, i) => {
+        input.addEventListener('input', (e) => {
+          if (e.target.value.length === 1 && i < inputs.length - 1) {
+            inputs[i + 1].focus();
+          }
+        });
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Backspace' && !e.target.value && i > 0) {
+            inputs[i - 1].focus();
+          }
+          if (e.key === 'Enter') {
+            verifyCode();
+          }
+        });
+      });
+    }
+
+    function verifyCode() {
+      const inputs = document.querySelectorAll('.code-input');
+      const code = Array.from(inputs).map(i => i.value).join('');
+      const codeError = document.getElementById('codeError');
+
+      if (code.length < 4) {
+        codeError.classList.add('visible');
+        return;
+      }
+
+      codeError.classList.remove('visible');
+      state.loggedIn = true;
+      state.wizardStep = 1;
+      saveState();
+      showSection('wizard');
+    }
+
+    // ============================================================
+    // WIZARD
+    // ============================================================
+    function renderWizardProgress() {
+      const container = document.getElementById('wizardProgress');
+      let html = '';
+      for (let i = 1; i <= 4; i++) {
+        const cls = i < state.wizardStep ? 'done' : (i === state.wizardStep ? 'active' : '');
+        html += `<div class="wizard-step-indicator">
+          <div class="wizard-dot ${cls}">${i < state.wizardStep ? '✓' : i}</div>
+          ${i < 4 ? `<div class="wizard-line ${i < state.wizardStep ? 'done' : ''}"></div>` : ''}
+        </div>`;
+      }
+      container.innerHTML = html;
+    }
+
+    function renderWizardStep() {
+      document.querySelectorAll('.wizard-step').forEach(s => {
+        s.classList.remove('active');
+        if (parseInt(s.dataset.step) === state.wizardStep) s.classList.add('active');
+      });
+
+      const prevBtn = document.getElementById('wizardPrev');
+      const nextBtn = document.getElementById('wizardNext');
+      prevBtn.style.visibility = state.wizardStep > 1 ? 'visible' : 'hidden';
+      nextBtn.textContent = state.wizardStep === 4 ? TEXT.wizardFinish : TEXT.wizardNext;
+
+      // Render lists
+      renderMedList();
+      renderAppointmentList();
+      renderContactList();
+    }
+
+    function populateWizardFields() {
+      document.getElementById('parentNameInput').value = state.parentName || '';
+      document.getElementById('parentGenderSelect').value = state.parentGender || 'male';
+    }
+
+    function wizardNavigate(dir) {
+      if (dir === 1) {
+        // Validate current step
+        if (state.wizardStep === 1) {
+          const name = document.getElementById('parentNameInput').value.trim();
+          if (!name) {
+            document.getElementById('parentNameInput').classList.add('error');
+            setTimeout(() => document.getElementById('parentNameInput').classList.remove('error'), 500);
+            return;
+          }
+          state.parentName = name;
+          state.parentGender = document.getElementById('parentGenderSelect').value;
+        }
+        if (state.wizardStep === 4) {
+          // Finish wizard
+          saveState();
+          showSection('linkGenerated');
+          return;
+        }
+      }
+
+      state.wizardStep = Math.max(1, Math.min(4, state.wizardStep + dir));
+      saveState();
+      renderWizardProgress();
+      renderWizardStep();
+    }
+
+    // Photo upload simulation
+    function simulatePhotoUpload(type) {
+      const el = document.getElementById(type + 'PhotoUpload');
+      // Simulate with emoji avatars
+      const avatars = ['👴', '👵', '🧓', '👤'];
+      const current = el.textContent.trim();
+      const idx = avatars.indexOf(current);
+      el.textContent = avatars[(idx + 1) % avatars.length];
+    }
+
+    // Medications
+    function addMedication() {
+      const name = document.getElementById('medNameInput').value.trim();
+      const time = document.getElementById('medTimeInput').value;
+      const dose = document.getElementById('medDoseInput').value.trim();
+      const note = document.getElementById('medNoteInput').value.trim();
+
+      if (!name || !time) {
+        showToast(TEXT.errorGeneric, 'error');
+        return;
+      }
+
+      state.medications.push({ id: Date.now(), name, time, dose, note });
+      saveState();
+      renderMedList();
+
+      document.getElementById('medNameInput').value = '';
+      document.getElementById('medTimeInput').value = '';
+      document.getElementById('medDoseInput').value = '';
+      document.getElementById('medNoteInput').value = '';
+    }
+
+    function removeMedication(id) {
+      state.medications = state.medications.filter(m => m.id !== id);
+      saveState();
+      renderMedList();
+    }
+
+    function renderMedList() {
+      const container = document.getElementById('medList');
+      if (!container) return;
+      container.innerHTML = state.medications.map(m => `
+        <div class="item-card">
+          <div class="item-info">
+            <div class="item-name">💊 ${m.name}</div>
+            <div class="item-detail">${m.time} — ${m.dose} ${m.note ? '(' + m.note + ')' : ''}</div>
+          </div>
+          <button class="item-remove" onclick="removeMedication(${m.id})" aria-label="${TEXT.remove}">${TEXT.remove}</button>
+        </div>
+      `).join('');
+    }
+
+    // Appointments
+    function addAppointment() {
+      const title = document.getElementById('apptTitleInput').value.trim();
+      const date = document.getElementById('apptDateInput').value;
+      const time = document.getElementById('apptTimeInput').value;
+      const location = document.getElementById('apptLocationInput').value.trim();
+
+      if (!title || !date) {
+        showToast(TEXT.errorGeneric, 'error');
+        return;
+      }
+
+      state.appointments.push({ id: Date.now(), title, date, time, location });
+      saveState();
+      renderAppointmentList();
+
+      document.getElementById('apptTitleInput').value = '';
+      document.getElementById('apptDateInput').value = '';
+      document.getElementById('apptTimeInput').value = '';
+      document.getElementById('apptLocationInput').value = '';
+    }
+
+    function removeAppointment(id) {
+      state.appointments = state.appointments.filter(a => a.id !== id);
+      saveState();
+      renderAppointmentList();
+    }
+
+    function renderAppointmentList() {
+      const container = document.getElementById('appointmentList');
+      if (!container) return;
+      container.innerHTML = state.appointments.map(a => `
+        <div class="item-card">
+          <div class="item-info">
+            <div class="item-name">📅 ${a.title}</div>
+            <div class="item-detail">${formatDateArabic(a.date)} ${a.time || ''} — ${a.location || ''}</div>
+          </div>
+          <button class="item-remove" onclick="removeAppointment(${a.id})" aria-label="${TEXT.remove}">${TEXT.remove}</button>
+        </div>
+      `).join('');
+    }
+
+    // Contacts
+    function addContact() {
+      const name = document.getElementById('contactNameInput').value.trim();
+      const phone = document.getElementById('contactPhoneInput').value.trim();
+      const relation = document.getElementById('contactRelationInput').value.trim();
+
+      if (!name || !phone) {
+        showToast(TEXT.errorGeneric, 'error');
+        return;
+      }
+
+      state.contacts.push({ id: Date.now(), name, phone, relation });
+      saveState();
+      renderContactList();
+
+      document.getElementById('contactNameInput').value = '';
+      document.getElementById('contactPhoneInput').value = '';
+      document.getElementById('contactRelationInput').value = '';
+    }
+
+    function removeContact(id) {
+      state.contacts = state.contacts.filter(c => c.id !== id);
+      saveState();
+      renderContactList();
+    }
+
+    function renderContactList() {
+      const container = document.getElementById('contactList');
+      if (!container) return;
+      container.innerHTML = state.contacts.map(c => `
+        <div class="item-card">
+          <div class="item-info">
+            <div class="item-name">👤 ${c.name}</div>
+            <div class="item-detail">${c.relation} — ${c.phone}</div>
+          </div>
+          <button class="item-remove" onclick="removeContact(${c.id})" aria-label="${TEXT.remove}">${TEXT.remove}</button>
+        </div>
+      `).join('');
+    }
+
+    // ============================================================
+    // QR CODE (simple visual simulation)
+    // ============================================================
+    function generateQRCode() {
+      const container = document.getElementById('qrCode');
+      const canvas = document.createElement('canvas');
+      canvas.width = 180;
+      canvas.height = 180;
+      const ctx = canvas.getContext('2d');
+      const size = 6;
+      const modules = 29;
+
+      // Generate a deterministic pseudo-random QR pattern
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#000000';
+
+      // Position markers (top-left, top-right, bottom-left)
+      function drawFinder(x, y) {
+        for (let r = 0; r < 7; r++) {
+          for (let c = 0; c < 7; c++) {
+            if (r === 0 || r === 6 || c === 0 || c === 6 || (r >= 2 && r <= 4 && c >= 2 && c <= 4)) {
+              ctx.fillRect((x + c) * size + 3, (y + r) * size + 3, size, size);
+            }
+          }
+        }
+      }
+
+      drawFinder(0, 0);
+      drawFinder(22, 0);
+      drawFinder(0, 22);
+
+      // Fill with pseudo-random data pattern
+      const seed = (state.parentName || 'rafeeq').length * 7 + 42;
+      for (let r = 0; r < modules; r++) {
+        for (let c = 0; c < modules; c++) {
+          if ((r < 8 && c < 8) || (r < 8 && c > 20) || (r > 20 && c < 8)) continue;
+          if (((r * 31 + c * 17 + seed) % 3) === 0) {
+            ctx.fillRect(c * size + 3, r * size + 3, size, size);
+          }
+        }
+      }
+
+      container.innerHTML = '';
+      container.appendChild(canvas);
+
+      // Set link URL
+      const link = `rafeeq.app/p/${btoa(state.parentName || 'parent').substring(0, 8)}`;
+      document.getElementById('parentLinkUrl').textContent = link;
+    }
+
+    // ============================================================
+    // PARENT VIEW
+    // ============================================================
+    function openAsParent() {
+      showSection('parentView');
+    }
+
+    function setupParentView() {
+      if (!state.audioUnlocked) {
+        document.getElementById('parentStart').classList.remove('hidden');
+        document.getElementById('parentHome').classList.add('hidden');
+        hideAllSubviews();
+      } else {
+        showParentHome();
+      }
+    }
+
+    function unlockParentAudio() {
+      // Create and play a silent audio context to unlock audio
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        gain.gain.value = 0;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.1);
+        ctx.resume();
+      } catch (e) {
+        console.log('Audio context init failed:', e);
+      }
+
+      state.audioUnlocked = true;
+      saveState();
+      showParentHome();
+
+      // Request notification permission
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+    }
+
+    function showParentHome() {
+      document.getElementById('parentStart').classList.add('hidden');
+      document.getElementById('parentHome').classList.remove('hidden');
+      hideAllSubviews();
+      renderParentHome();
+    }
+
+    function hideAllSubviews() {
+      document.querySelectorAll('.parent-subview').forEach(v => v.classList.remove('active'));
+    }
+
+    function parentBack() {
+      hideAllSubviews();
+      document.getElementById('parentHome').classList.remove('hidden');
+      window.scrollTo(0, 0);
+    }
+
+    function renderParentHome() {
+      // Greeting
+      const hour = new Date().getHours();
+      let greeting = TEXT.goodMorning;
+      if (hour >= 12 && hour < 17) greeting = TEXT.goodAfternoon;
+      if (hour >= 17) greeting = TEXT.goodEvening;
+      document.getElementById('greetingText').textContent = greeting;
+      document.getElementById('greetingName').textContent = state.parentName || '';
+
+      // Grid buttons
+      const grid = document.getElementById('parentGrid');
+      grid.innerHTML = `
+        <button class="parent-grid-btn" onclick="showParentSubview('parentMeds')" aria-label="${TEXT.parentBtnMeds}">
+          <span class="icon">${TEXT.parentBtnMedsIcon}</span>
+          <span>${TEXT.parentBtnMeds}</span>
+        </button>
+        <button class="parent-grid-btn" onclick="showParentSubview('parentAppointments')" aria-label="${TEXT.parentBtnAppts}">
+          <span class="icon">${TEXT.parentBtnApptsIcon}</span>
+          <span>${TEXT.parentBtnAppts}</span>
+        </button>
+        <button class="parent-grid-btn" onclick="showParentSubview('parentContacts')" aria-label="${TEXT.parentBtnContacts}">
+          <span class="icon">${TEXT.parentBtnContactsIcon}</span>
+          <span>${TEXT.parentBtnContacts}</span>
+        </button>
+        <button class="parent-grid-btn" onclick="showParentSubview('parentDay')" aria-label="${TEXT.parentBtnDay}">
+          <span class="icon">${TEXT.parentBtnDayIcon}</span>
+          <span>${TEXT.parentBtnDay}</span>
+        </button>
+        <button class="parent-grid-btn emergency" onclick="handleEmergency()" aria-label="${TEXT.parentBtnEmergency}">
+          <span class="icon">${TEXT.parentBtnEmergencyIcon}</span>
+          <span>${TEXT.parentBtnEmergency}</span>
+        </button>
+      `;
+
+      // Extra row: wellbeing + games
+      grid.innerHTML += `
+        <button class="parent-grid-btn" onclick="showParentSubview('parentWellbeing')" aria-label="${TEXT.wellbeingViewTitle}">
+          <span class="icon">🧘</span>
+          <span>${TEXT.wellbeingViewTitle.replace('🧘 ','')}</span>
+        </button>
+        <button class="parent-grid-btn" onclick="showParentSubview('parentGames')" aria-label="${TEXT.gamesViewTitle}">
+          <span class="icon">🧠</span>
+          <span>${TEXT.gamesViewTitle.replace('🧠 ','')}</span>
+        </button>
+      `;
+
+      // Mood check-in
+      renderMoodOptions();
+
+      // Start clock
+      updateClock();
+      if (clockInterval) clearInterval(clockInterval);
+      clockInterval = setInterval(updateClock, 60000);
+    }
+
+    function showParentSubview(viewId) {
+      document.getElementById('parentHome').classList.add('hidden');
+      hideAllSubviews();
+      document.getElementById(viewId).classList.add('active');
+
+      if (viewId === 'parentMeds') renderParentMeds();
+      if (viewId === 'parentAppointments') renderParentAppts();
+      if (viewId === 'parentEmergency') renderEmergencyView();
+      if (viewId === 'parentContacts') renderParentContacts();
+      if (viewId === 'parentDay') renderDayView();
+      if (viewId === 'parentWellbeing') renderWellbeing();
+      if (viewId === 'parentGames') renderGames();
+
+      window.scrollTo(0, 0);
+    }
+
+    // ============================================================
+    // PARENT MEDICATIONS VIEW
+    // ============================================================
+    function renderParentMeds() {
+      const container = document.getElementById('parentMedsList');
+      const today = getTodayKey();
+
+      container.innerHTML = state.medications.map(m => {
+        const taken = state.medLog[today] && state.medLog[today][m.id];
+        return `
+          <div class="med-item">
+            <div class="med-icon">💊</div>
+            <div class="med-info">
+              <div class="med-name">${m.name}</div>
+              <div class="med-time">${m.time} — ${m.dose} ${m.note ? '· ' + m.note : ''}</div>
+            </div>
+            <button class="med-take-btn ${taken ? 'taken' : 'not-taken'}"
+                    onclick="takeMedicine(${m.id})"
+                    ${taken ? 'disabled' : ''}>
+              ${taken ? TEXT.alreadyTaken : TEXT.tookMedicine}
+            </button>
+          </div>
+        `;
+      }).join('');
+
+      if (state.medications.length === 0) {
+        container.innerHTML = `<p style="text-align:center; color:var(--clr-text-light); padding:40px">${TEXT.noData}</p>`;
+      }
+
+      // Render log
+      renderMedLog();
+    }
+
+    function takeMedicine(medId) {
+      const today = getTodayKey();
+      if (!state.medLog[today]) state.medLog[today] = {};
+      state.medLog[today][medId] = new Date().toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' });
+
+      // Remove from alarms
+      if (state.alarmRepeatCount) delete state.alarmRepeatCount[medId];
+      if (state.alarmSnooze) delete state.alarmSnooze[medId];
+
+      // Remove alert for this med
+      state.alerts = state.alerts.filter(a => a.medId !== medId || a.date !== today);
+
+      saveState();
+      renderParentMeds();
+      showToast(TEXT.saved, 'success');
+    }
+
+    function renderMedLog() {
+      const container = document.getElementById('medLog');
+      const today = getTodayKey();
+      const log = state.medLog[today] || {};
+
+      let html = '';
+      state.medications.forEach(m => {
+        if (log[m.id]) {
+          html += `<div style="padding:6px 0; border-bottom:1px solid var(--clr-beige-dark)">
+            ✅ ${m.name} — ${TEXT.medTakenAt} ${log[m.id]}
+          </div>`;
+        }
+      });
+      if (!html) html = `<p>${TEXT.noData}</p>`;
+      container.innerHTML = html;
+    }
+
+    // ============================================================
+    // PARENT APPOINTMENTS VIEW
+    // ============================================================
+    function renderParentAppts() {
+      const container = document.getElementById('parentApptsList');
+      const upcoming = state.appointments.filter(a => new Date(a.date) >= new Date(getTodayKey()));
+
+      container.innerHTML = upcoming.map(a => `
+        <div class="med-item">
+          <div class="med-icon">📅</div>
+          <div class="med-info">
+            <div class="med-name">${a.title}</div>
+            <div class="med-time">${formatDateArabic(a.date)} ${a.time || ''} — ${a.location || ''}</div>
+          </div>
+        </div>
+      `).join('');
+
+      if (upcoming.length === 0) {
+        container.innerHTML = `<p style="text-align:center; color:var(--clr-text-light); padding:40px">${TEXT.noAppointments}</p>`;
+      }
+    }
+
+    // ============================================================
+    // EMERGENCY
+    // ============================================================
+    function handleEmergency() {
+      showConfirm(
+        '🆘',
+        TEXT.emergencyConfirm1,
+        TEXT.emergencyYes,
+        TEXT.emergencyNo,
+        () => {
+          showConfirm(
+            '⚠️',
+            TEXT.emergencyConfirm2,
+            TEXT.emergencyYes,
+            TEXT.emergencyNo,
+            () => executeEmergency()
+          );
+        }
+      );
+    }
+
+    function executeEmergency() {
+      showParentSubview('parentEmergency');
+      renderEmergencyView(true);
+    }
+
+    function renderEmergencyView(triggered) {
+      const container = document.getElementById('emergencyContent');
+      let html = '';
+
+      if (triggered) {
+        html += `
+          <div style="margin-bottom:24px">
+            <p style="font-size:1.2rem; font-weight:700; color:var(--clr-danger); margin-bottom:12px">${TEXT.emergencyCalling}</p>
+            <p style="font-size:1rem; color:var(--clr-text-light)">${TEXT.emergencySendingLocation}</p>
+            <p style="font-size:1rem; color:var(--clr-success); margin-top:12px">${TEXT.emergencyFamilyNotified}</p>
+          </div>
+        `;
+      } else {
+        html += `
+          <button class="emergency-big-btn" onclick="handleEmergency()" aria-label="${TEXT.emergencyBtnText}">
+            <span class="icon">🆘</span>
+            <span>${TEXT.emergencyBtnText}</span>
+          </button>
+        `;
+      }
+
+      // Emergency number
+      html += `
+        <a href="tel:911" class="btn btn-danger btn-lg btn-block" style="margin:16px 0; font-size:1.5rem; text-decoration:none">
+          📞 ${TEXT.emergencyNumber}
+        </a>
+      `;
+
+      // Family contacts
+      html += '<div class="emergency-contacts">';
+      state.contacts.forEach(c => {
+        html += `
+          <a href="tel:${c.phone}" class="emergency-contact-btn" style="text-decoration:none">
+            <div class="contact-avatar">${c.name.charAt(0)}</div>
+            <div style="font-weight:700">${c.name}</div>
+            <div style="font-size:0.8rem; color:var(--clr-text-light)">${c.relation}</div>
+          </a>
+        `;
+      });
+      html += '</div>';
+
+      container.innerHTML = html;
+    }
+
+    // ============================================================
+    // PARENT CONTACTS VIEW
+    // ============================================================
+    function renderParentContacts() {
+      const container = document.getElementById('parentContactsList');
+      container.innerHTML = state.contacts.map(c => `
+        <a href="tel:${c.phone}" class="emergency-contact-btn" style="text-decoration:none">
+          <div class="contact-avatar">${c.name.charAt(0)}</div>
+          <div style="font-weight:700; margin-bottom:4px">${c.name}</div>
+          <div style="font-size:0.8rem; color:var(--clr-text-light); margin-bottom:8px">${c.relation}</div>
+          <div class="btn btn-primary" style="min-height:44px; font-size:0.85rem; padding:8px 16px">📞 ${TEXT.callBtn}</div>
+        </a>
+      `).join('');
+
+      if (state.contacts.length === 0) {
+        container.innerHTML = `<p style="text-align:center; color:var(--clr-text-light); padding:40px">${TEXT.noData}</p>`;
+      }
+    }
+
+    // ============================================================
+    // DAY VIEW
+    // ============================================================
+    function renderDayView() {
+      const now = new Date();
+      const dateStr = formatDateArabicFull(now);
+      const timeStr = now.toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' });
+
+      document.getElementById('dayInfo').innerHTML = `
+        <div class="day-date">${dateStr}</div>
+        <div class="day-time">${timeStr}</div>
+        <div class="day-weather">
+          <div class="icon">${TEXT.weatherIcon}</div>
+          <div>${TEXT.weatherSimulated}</div>
+        </div>
+      `;
+
+      // Daily wisdom
+      const wisdomIdx = now.getDate() % TEXT.wisdoms.length;
+      document.getElementById('dailyWisdomCard').textContent = '📿 ' + TEXT.wisdoms[wisdomIdx];
+    }
+
+    function updateClock() {
+      const dayInfo = document.getElementById('dayInfo');
+      if (dayInfo && dayInfo.querySelector('.day-time')) {
+        const now = new Date();
+        dayInfo.querySelector('.day-time').textContent = now.toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' });
+      }
+    }
+
+    // ============================================================
+    // MOOD CHECK-IN
+    // ============================================================
+    function renderMoodOptions() {
+      const container = document.getElementById('moodOptions');
+      const today = getTodayKey();
+      const todayMood = state.moods.find(m => m.date === today);
+
+      container.innerHTML = TEXT.moods.map(m => `
+        <button class="mood-btn ${todayMood && todayMood.value === m.value ? 'selected' : ''}"
+                onclick="selectMood(${m.value})" aria-label="${m.label}">
+          <span>${m.emoji}</span>
+          <span class="mood-label">${m.label}</span>
+        </button>
+      `).join('');
+    }
+
+    function selectMood(value) {
+      const today = getTodayKey();
+      const existing = state.moods.findIndex(m => m.date === today);
+      if (existing >= 0) {
+        state.moods[existing].value = value;
+      } else {
+        state.moods.push({ date: today, value });
+      }
+      // Keep only last 30 days
+      if (state.moods.length > 30) state.moods = state.moods.slice(-30);
+      saveState();
+      renderMoodOptions();
+      showToast(TEXT.moodSaved, 'success');
+    }
+
+    // ============================================================
+    // WELLBEING
+    // ============================================================
+    function renderWellbeing() {
+      const container = document.getElementById('wellbeingContent');
+      let html = '';
+
+      // Breathing exercise
+      html += `
+        <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:8px">${TEXT.breathingTitle}</h3>
+        <div class="breathing-circle" id="breathingCircle">${TEXT.breathingStart}</div>
+        <div style="text-align:center; margin-bottom:32px">
+          <button class="btn btn-secondary" onclick="toggleBreathing()" id="breathingToggle">${TEXT.breathingStart}</button>
+        </div>
+      `;
+
+      // Stretching
+      html += `<h3 style="font-size:1.1rem; font-weight:700; margin-bottom:12px">${TEXT.stretchTitle}</h3>`;
+      html += '<div class="stretch-list">';
+      TEXT.stretches.forEach(s => {
+        html += `
+          <div class="stretch-item">
+            <span class="stretch-icon">${s.icon}</span>
+            <span>${s.text}</span>
+          </div>
+        `;
+      });
+      html += '</div>';
+
+      container.innerHTML = html;
+    }
+
+    function toggleBreathing() {
+      const circle = document.getElementById('breathingCircle');
+      const btn = document.getElementById('breathingToggle');
+
+      if (breathingInterval) {
+        clearInterval(breathingInterval);
+        breathingInterval = null;
+        circle.classList.remove('active');
+        circle.textContent = TEXT.breathingStart;
+        btn.textContent = TEXT.breathingStart;
+        return;
+      }
+
+      circle.classList.add('active');
+      btn.textContent = TEXT.breathingStop;
+
+      let phase = 0;
+      const phases = [
+        { text: TEXT.breathingInhale, duration: 4000 },
+        { text: TEXT.breathingHold, duration: 4000 },
+        { text: TEXT.breathingExhale, duration: 4000 },
+      ];
+
+      function updatePhase() {
+        circle.textContent = phases[phase].text;
+        phase = (phase + 1) % phases.length;
+      }
+
+      updatePhase();
+      breathingInterval = setInterval(updatePhase, 4000);
+    }
+
+    // ============================================================
+    // GAMES
+    // ============================================================
+    function renderGames() {
+      const container = document.getElementById('gamesContent');
+      let html = '';
+
+      // Memory game
+      html += `
+        <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:8px">${TEXT.memoryGameTitle}</h3>
+        <div class="game-score">${TEXT.memoryMoves}: <span id="memoryMovesCount">0</span></div>
+        <div class="memory-grid" id="memoryGrid"></div>
+        <div style="text-align:center; margin-top:16px">
+          <button class="btn btn-secondary" onclick="initMemoryGame()">${TEXT.memoryGameNew}</button>
+        </div>
+      `;
+
+      // Daily question
+      html += `
+        <div class="daily-question-card" style="margin-top:32px">
+          <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:8px">${TEXT.dailyQuestionTitle}</h3>
+          <div id="dailyQuestionContent"></div>
+        </div>
+      `;
+
+      container.innerHTML = html;
+      initMemoryGame();
+      renderDailyQuestion();
+    }
+
+    function initMemoryGame() {
+      const emojis = ['🌸', '🌺', '🍎', '🌙', '⭐', '🕌'];
+      const pairs = [...emojis, ...emojis];
+      // Shuffle
+      for (let i = pairs.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pairs[i], pairs[j]] = [pairs[j], pairs[i]];
+      }
+
+      memoryCards = pairs;
+      memoryFlipped = [];
+      memoryMatched = new Array(pairs.length).fill(false);
+      memoryMoves = 0;
+      memoryLocked = false;
+
+      renderMemoryGrid();
+      const mc = document.getElementById('memoryMovesCount');
+      if (mc) mc.textContent = '0';
+    }
+
+    function renderMemoryGrid() {
+      const grid = document.getElementById('memoryGrid');
+      if (!grid) return;
+      grid.innerHTML = memoryCards.map((card, i) => {
+        const isFlipped = memoryFlipped.includes(i) || memoryMatched[i];
+        return `<button class="memory-card-cell ${isFlipped ? 'flipped' : ''} ${memoryMatched[i] ? 'matched' : ''}"
+                onclick="flipCard(${i})"
+                aria-label="بطاقة ${i + 1}">
+          ${isFlipped ? card : '❓'}
+        </button>`;
+      }).join('');
+    }
+
+    function flipCard(index) {
+      if (memoryLocked || memoryFlipped.includes(index) || memoryMatched[index]) return;
+      memoryFlipped.push(index);
+      renderMemoryGrid();
+
+      if (memoryFlipped.length === 2) {
+        memoryLocked = true;
+        memoryMoves++;
+        const mc = document.getElementById('memoryMovesCount');
+        if (mc) mc.textContent = memoryMoves;
+
+        const [a, b] = memoryFlipped;
+        if (memoryCards[a] === memoryCards[b]) {
+          memoryMatched[a] = true;
+          memoryMatched[b] = true;
+          memoryFlipped = [];
+          memoryLocked = false;
+          renderMemoryGrid();
+
+          if (memoryMatched.every(Boolean)) {
+            setTimeout(() => showToast(TEXT.memoryWin, 'success'), 300);
+          }
+        } else {
+          setTimeout(() => {
+            memoryFlipped = [];
+            memoryLocked = false;
+            renderMemoryGrid();
+          }, 800);
+        }
+      }
+    }
+
+    function renderDailyQuestion() {
+      const container = document.getElementById('dailyQuestionContent');
+      if (!container) return;
+      const qIdx = new Date().getDate() % TEXT.dailyQuestions.length;
+      const q = TEXT.dailyQuestions[qIdx];
+
+      container.innerHTML = `
+        <p class="dq-question">${q.q}</p>
+        <div class="dq-options">
+          ${q.options.map((o, i) => `
+            <button class="dq-option" onclick="answerDailyQuestion(this, ${i}, ${q.correct})">${o}</button>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function answerDailyQuestion(el, selected, correct) {
+      const options = el.parentElement.querySelectorAll('.dq-option');
+      options.forEach((o, i) => {
+        o.disabled = true;
+        o.style.pointerEvents = 'none';
+        if (i === correct) o.classList.add('correct');
+        if (i === selected && selected !== correct) o.classList.add('wrong');
+      });
+    }
+
+    // ============================================================
+    // UTILITY FUNCTIONS (DATES, TOASTS, CONFIRMATION)
+    // ============================================================
+    function getTodayKey() {
+      const d = new Date();
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function getFutureDate(days) {
+      const d = new Date();
+      d.setDate(d.getDate() + days);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function formatDateArabic(dateStr) {
+      if (!dateStr) return '';
+      try {
+        const d = new Date(dateStr);
+        return new Intl.DateTimeFormat('ar-JO-u-nu-latn', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        }).format(d);
+      } catch (e) {
+        return dateStr;
+      }
+    }
+
+    function formatDateArabicFull(dateObj) {
+      if (!dateObj) dateObj = new Date();
+      try {
+        return new Intl.DateTimeFormat('ar-JO-u-nu-latn', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        }).format(dateObj);
+      } catch (e) {
+        return dateObj.toDateString();
+      }
+    }
+
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+
+      const iconMap = {
+        success: '✅',
+        error: '⚠️',
+        warning: '🔔',
+        info: 'ℹ️'
+      };
+
+      toast.innerHTML = `
+        <span class="toast-icon">${iconMap[type] || 'ℹ️'}</span>
+        <span class="toast-text">${msg}</span>
+      `;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(-20px)';
+        toast.style.transition = 'all 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+
+    function showConfirm(icon, text, yesText, noText, onConfirm) {
+      const overlay = document.getElementById('confirmOverlay');
+      const iconEl = document.getElementById('confirmIcon');
+      const textEl = document.getElementById('confirmText');
+      const buttonsEl = document.getElementById('confirmButtons');
+
+      if (!overlay) return;
+
+      iconEl.textContent = icon || '❓';
+      textEl.textContent = text || '';
+      buttonsEl.innerHTML = `
+        <button class="btn btn-primary" id="confirmYesBtn">${yesText || TEXT.confirm}</button>
+        <button class="btn btn-ghost" id="confirmNoBtn">${noText || TEXT.cancel}</button>
+      `;
+      overlay.classList.add('active');
+
+      document.getElementById('confirmYesBtn').onclick = () => {
+        overlay.classList.remove('active');
+        if (onConfirm) onConfirm();
+      };
+      document.getElementById('confirmNoBtn').onclick = () => {
+        overlay.classList.remove('active');
+      };
+    }
+
+    // ============================================================
+    // WEB AUDIO API CHIME & AUDIO SYNTHESIS
+    // ============================================================
+    let audioCtx = null;
+    let currentAlarmAudio = null;
+    let activeRecordingMedId = null;
+    let mediaStream = null;
+
+    function getAudioContext() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          audioCtx = new AudioContextClass();
+        }
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    function playChime() {
+      try {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+
+        // Soothing 3-tone harmonic chime (F5, A5, C6)
+        const freqs = [698.46, 880.00, 1046.50];
+        freqs.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.18);
+
+          gain.gain.setValueAtTime(0, now + idx * 0.18);
+          gain.gain.linearRampToValueAtTime(0.28, now + idx * 0.18 + 0.04);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.18 + 0.65);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc.start(now + idx * 0.18);
+          osc.stop(now + idx * 0.18 + 0.7);
+        });
+      } catch (err) {
+        console.log('Chime playback error:', err);
+      }
+    }
+
+    // Generates a self-contained 8-bit PCM WAV bell chime in base64
+    function createSampleToneWav(freq = 587.33, duration = 1.3) {
+      const sampleRate = 8000;
+      const numSamples = Math.floor(sampleRate * duration);
+      const buffer = new Uint8Array(44 + numSamples);
+
+      // "RIFF" chunk descriptor
+      buffer[0] = 0x52; buffer[1] = 0x49; buffer[2] = 0x46; buffer[3] = 0x46;
+      const fileSize = 36 + numSamples;
+      buffer[4] = fileSize & 0xff; buffer[5] = (fileSize >> 8) & 0xff;
+      buffer[6] = (fileSize >> 16) & 0xff; buffer[7] = (fileSize >> 24) & 0xff;
+      buffer[8] = 0x57; buffer[9] = 0x41; buffer[10] = 0x46; buffer[11] = 0x45; // "WAVE"
+
+      // "fmt " subchunk
+      buffer[12] = 0x66; buffer[13] = 0x6d; buffer[14] = 0x74; buffer[15] = 0x20;
+      buffer[16] = 16; buffer[17] = 0; buffer[18] = 0; buffer[19] = 0; // Subchunk size
+      buffer[20] = 1; buffer[21] = 0; // AudioFormat = 1 (PCM)
+      buffer[22] = 1; buffer[23] = 0; // 1 Channel (Mono)
+      buffer[24] = sampleRate & 0xff; buffer[25] = (sampleRate >> 8) & 0xff;
+      buffer[26] = (sampleRate >> 16) & 0xff; buffer[27] = (sampleRate >> 24) & 0xff; // SampleRate
+      buffer[28] = sampleRate & 0xff; buffer[29] = (sampleRate >> 8) & 0xff;
+      buffer[30] = (sampleRate >> 16) & 0xff; buffer[31] = (sampleRate >> 24) & 0xff; // ByteRate
+      buffer[32] = 1; buffer[33] = 0; // BlockAlign
+      buffer[34] = 8; buffer[35] = 0; // BitsPerSample = 8
+
+      // "data" subchunk
+      buffer[36] = 0x64; buffer[37] = 0x61; buffer[38] = 0x74; buffer[39] = 0x61;
+      buffer[40] = numSamples & 0xff; buffer[41] = (numSamples >> 8) & 0xff;
+      buffer[42] = (numSamples >> 16) & 0xff; buffer[43] = (numSamples >> 24) & 0xff;
+
+      for (let i = 0; i < numSamples; i++) {
+        const t = i / sampleRate;
+        const decay = Math.exp(-2.8 * t);
+        const wave = Math.sin(2 * Math.PI * freq * t) * 0.7 + Math.sin(2 * Math.PI * (freq * 1.5) * t) * 0.3;
+        buffer[44 + i] = Math.floor(128 + wave * decay * 120);
+      }
+
+      let binary = '';
+      for (let i = 0; i < buffer.length; i++) {
+        binary += String.fromCharCode(buffer[i]);
+      }
+      return 'data:audio/wav;base64,' + btoa(binary);
+    }
+
+    // ============================================================
+    // VOICE MEDICINE ALARM & REMINDERS
+    // ============================================================
+    function speakReminder(med, childName) {
+      const hour = new Date().getHours();
+      const isMorning = hour < 14;
+      const parentName = state.parentName || 'والدي';
+      const noteText = med.note ? `، ${med.note}` : '';
+
+      // 1) Play recorded family voice if available
+      if (state.recordings && state.recordings[med.id]) {
+        try {
+          if (currentAlarmAudio) {
+            currentAlarmAudio.pause();
+            currentAlarmAudio.currentTime = 0;
+          }
+          currentAlarmAudio = new Audio(state.recordings[med.id]);
+          const playPromise = currentAlarmAudio.play();
+          if (playPromise !== undefined) {
+            playPromise.then(() => {
+              // If it's a sample bell tone, also speak the message after the chime!
+              if (state.recordings[med.id].startsWith('data:audio/wav')) {
+                setTimeout(() => {
+                  fallbackTTS(med, childName, isMorning, parentName, noteText);
+                }, 1200);
+              }
+            }).catch(err => {
+              console.log('Recorded audio blocked, using speech synthesis:', err);
+              fallbackTTS(med, childName, isMorning, parentName, noteText);
+            });
+          }
+          return;
+        } catch (err) {
+          console.log('Audio playback error:', err);
+        }
+      }
+
+      // 2) Fallback to SpeechSynthesis
+      fallbackTTS(med, childName, isMorning, parentName, noteText);
+    }
+
+    function fallbackTTS(med, childName, isMorning, parentName, noteText) {
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+
+      let phrase = '';
+      if (childName) {
+        phrase = TEXT.alarmChildReminder
+          .replace('{childName}', childName)
+          .replace('{medicine}', med.name);
+        if (med.note) phrase += `، ${med.note}`;
+      } else {
+        const template = isMorning ? TEXT.alarmGreetingMorning : TEXT.alarmGreetingEvening;
+        phrase = template
+          .replace('{name}', parentName)
+          .replace('{medicine}', med.name)
+          .replace('{note}', med.note || '');
+      }
+
+      const utter = new SpeechSynthesisUtterance(phrase);
+      utter.rate = 0.85;
+      utter.pitch = 1.05;
+
+      const voices = window.speechSynthesis.getVoices();
+      const arabicVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('ar'));
+      if (arabicVoice) {
+        utter.voice = arabicVoice;
+        utter.lang = arabicVoice.lang;
+      } else {
+        utter.lang = 'ar-JO';
+      }
+
+      utter.onerror = () => {
+        showToast(TEXT.errorNoArabicVoice, 'warning');
+      };
+
+      window.speechSynthesis.speak(utter);
+    }
+
+    function startMedicineChecker() {
+      if (alarmInterval) clearInterval(alarmInterval);
+      alarmInterval = setInterval(checkMedications, 15000);
+      checkMedications();
+    }
+
+    function checkMedications() {
+      if (!state.medications || state.medications.length === 0) return;
+
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      const curTime = `${hh}:${mm}`;
+      const today = getTodayKey();
+
+      // Check snoozes
+      if (state.alarmSnooze) {
+        for (const [medIdStr, snoozeTime] of Object.entries(state.alarmSnooze)) {
+          if (now.getTime() >= snoozeTime) {
+            delete state.alarmSnooze[medIdStr];
+            saveState();
+            const snoozedMed = state.medications.find(m => String(m.id) === String(medIdStr));
+            if (snoozedMed) {
+              triggerAlarm(snoozedMed);
+              return;
+            }
+          }
+        }
+      }
+
+      // Check scheduled times
+      for (const med of state.medications) {
+        const isTaken = state.medLog[today] && state.medLog[today][med.id];
+        if (isTaken) continue;
+
+        if (state.alarmSnooze && state.alarmSnooze[med.id]) continue;
+
+        if (curTime === med.time) {
+          const triggerKey = `${today}_${curTime}`;
+          if (med._lastTriggeredKey !== triggerKey) {
+            med._lastTriggeredKey = triggerKey;
+            triggerAlarm(med);
+            return;
+          }
+        }
+      }
+    }
+
+    function triggerAlarm(med) {
+      currentAlarmMed = med;
+      const today = getTodayKey();
+
+      // Find family member name
+      let childName = TEXT.sampleChildName;
+      if (state.contacts && state.contacts.length > 0) {
+        const found = state.contacts.find(c =>
+          (c.relation && (c.relation.includes('ابنة') || c.relation.includes('ابن'))) ||
+          c.name.includes('ريم')
+        );
+        if (found) childName = found.name.replace(/\(.*?\)/g, '').trim();
+      }
+
+      // Play soft chime then voice
+      playChime();
+      setTimeout(() => {
+        speakReminder(med, childName);
+      }, 600);
+
+      // Populate full-screen overlay
+      const overlay = document.getElementById('alarmOverlay');
+      const photoEl = document.getElementById('alarmChildPhoto');
+      const childEl = document.getElementById('alarmChildName');
+      const medEl = document.getElementById('alarmMedName');
+      const noteEl = document.getElementById('alarmMedNote');
+
+      if (photoEl) photoEl.textContent = '👧';
+      if (childEl) childEl.textContent = TEXT.alarmChildLabel.replace('{childName}', childName);
+      if (medEl) medEl.textContent = med.name;
+      if (noteEl) noteEl.textContent = `${med.dose || ''} ${med.note ? '· ' + med.note : ''}`;
+
+      if (overlay) overlay.classList.add('active');
+
+      // Update repeat counter
+      if (!state.alarmRepeatCount) state.alarmRepeatCount = {};
+      state.alarmRepeatCount[med.id] = (state.alarmRepeatCount[med.id] || 0) + 1;
+
+      // Raise family alert if unanswered 3 times
+      if (state.alarmRepeatCount[med.id] >= 3) {
+        const alertMsg = TEXT.alarmMissedAlert
+          .replace('{name}', state.parentName || 'الوالد')
+          .replace('{medicine}', med.name);
+
+        const alreadyExists = state.alerts.some(a => a.medId === med.id && a.date === today);
+        if (!alreadyExists) {
+          state.alerts.push({
+            id: Date.now(),
+            text: alertMsg,
+            date: today,
+            medId: med.id
+          });
+          saveState();
+        }
+      }
+
+      // Browser Notification if granted
+      if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+          new Notification(TEXT.appName, {
+            body: `${med.name}: ${med.dose || ''} ${med.note || ''}`,
+            dir: 'rtl',
+            lang: 'ar'
+          });
+        } catch (e) {
+          console.log('Notification error:', e);
+        }
+      }
+    }
+
+    function alarmTakeMed() {
+      if (currentAlarmAudio) {
+        currentAlarmAudio.pause();
+        currentAlarmAudio = null;
+      }
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+
+      const overlay = document.getElementById('alarmOverlay');
+      if (overlay) overlay.classList.remove('active');
+
+      if (currentAlarmMed) {
+        takeMedicine(currentAlarmMed.id);
+        if (state.alarmRepeatCount) delete state.alarmRepeatCount[currentAlarmMed.id];
+        if (state.alarmSnooze) delete state.alarmSnooze[currentAlarmMed.id];
+        saveState();
+        currentAlarmMed = null;
+      }
+    }
+
+    function alarmSnooze() {
+      if (currentAlarmAudio) {
+        currentAlarmAudio.pause();
+        currentAlarmAudio = null;
+      }
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+
+      const overlay = document.getElementById('alarmOverlay');
+      if (overlay) overlay.classList.remove('active');
+
+      if (currentAlarmMed) {
+        if (!state.alarmSnooze) state.alarmSnooze = {};
+        // Snooze for 10 minutes
+        state.alarmSnooze[currentAlarmMed.id] = Date.now() + 10 * 60 * 1000;
+        saveState();
+        showToast(TEXT.alarmSnoozeToast, 'info');
+        currentAlarmMed = null;
+      }
+    }
+
+    function triggerDemoAlarm() {
+      if (!state.medications || state.medications.length === 0) {
+        const sampleMed = {
+          id: 999,
+          name: 'كونكور (Concor 5mg)',
+          time: '08:00',
+          dose: 'حبة واحدة',
+          note: 'بعد الإفطار — لضغط الدم'
+        };
+        triggerAlarm(sampleMed);
+      } else {
+        const med = state.medications.find(m => !state.medLog[getTodayKey()] || !state.medLog[getTodayKey()][m.id]) || state.medications[0];
+        triggerAlarm(med);
+      }
+    }
+
+    // ============================================================
+    // FAMILY VOICE RECORDING (MEDIA RECORDER API)
+    // ============================================================
+    function renderVoiceMeds() {
+      const container = document.getElementById('voiceMedList');
+      if (!container) return;
+
+      if (!state.medications || state.medications.length === 0) {
+        container.innerHTML = `<p style="text-align:center; color:var(--clr-text-light); padding:20px">${TEXT.noData}</p>`;
+        return;
+      }
+
+      container.innerHTML = state.medications.map(m => {
+        const hasRec = state.recordings && state.recordings[m.id];
+        const isRecThis = activeRecordingMedId === m.id;
+
+        return `
+          <div class="voice-med-item">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px">
+              <div class="voice-med-name">💊 ${m.name} (${m.time})</div>
+              <span class="voice-status" style="color: ${hasRec ? 'var(--clr-success)' : 'var(--clr-text-light)'}">
+                ${hasRec ? TEXT.voiceHasRecording : TEXT.voiceNoRecording}
+              </span>
+            </div>
+            <div class="voice-controls">
+              ${isRecThis ? `
+                <button class="voice-btn record recording" onclick="stopRecordingMed(${m.id})">
+                  ${TEXT.voiceStop} <span class="recording-timer" id="recTimer_${m.id}">00:00</span>
+                </button>
+              ` : `
+                <button class="voice-btn record" onclick="startRecordingMed(${m.id})">
+                  ${TEXT.voiceRecord}
+                </button>
+              `}
+              ${hasRec ? `
+                <button class="voice-btn play" onclick="playRecordedVoice(${m.id})">
+                  ${TEXT.voicePlay}
+                </button>
+                <button class="voice-btn preview" onclick="previewChildReminder(${m.id})">
+                  ${TEXT.voicePreview}
+                </button>
+                <button class="voice-btn" style="background:var(--clr-beige-dark); color:var(--clr-text)" onclick="reRecordVoice(${m.id})">
+                  ${TEXT.voiceReRecord}
+                </button>
+              ` : `
+                <button class="voice-btn preview" onclick="previewChildReminder(${m.id})">
+                  ${TEXT.voicePreview}
+                </button>
+              `}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function startRecordingMed(medId) {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showToast(TEXT.voiceMicDenied, 'error');
+        return;
+      }
+
+      try {
+        showToast(TEXT.voiceExplain, 'info');
+        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        activeRecordingMedId = medId;
+        recordedChunks = [];
+
+        const options = { mimeType: 'audio/webm' };
+        if (!MediaRecorder.isTypeSupported('audio/webm')) {
+          delete options.mimeType;
+        }
+
+        mediaRecorder = new MediaRecorder(mediaStream, options);
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) {
+            recordedChunks.push(e.data);
+          }
+        };
+
+        mediaRecorder.onstop = () => {
+          if (recordedChunks.length > 0) {
+            const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              if (!state.recordings) state.recordings = {};
+              state.recordings[medId] = reader.result;
+              saveState();
+              showToast(TEXT.voiceSaved, 'success');
+              renderVoiceMeds();
+            };
+            reader.readAsDataURL(blob);
+          }
+          if (mediaStream) {
+            mediaStream.getTracks().forEach(track => track.stop());
+            mediaStream = null;
+          }
+        };
+
+        mediaRecorder.start();
+        renderVoiceMeds();
+
+        // Timer
+        let sec = 0;
+        if (recordingTimerInterval) clearInterval(recordingTimerInterval);
+        recordingTimerInterval = setInterval(() => {
+          sec++;
+          const timerEl = document.getElementById(`recTimer_${medId}`);
+          if (timerEl) {
+            const m = String(Math.floor(sec / 60)).padStart(2, '0');
+            const s = String(sec % 60).padStart(2, '0');
+            timerEl.textContent = `${m}:${s}`;
+          }
+        }, 1000);
+
+      } catch (err) {
+        console.error('Microphone error:', err);
+        showToast(TEXT.errorMicDenied, 'error');
+        activeRecordingMedId = null;
+        renderVoiceMeds();
+      }
+    }
+
+    function stopRecordingMed(medId) {
+      if (recordingTimerInterval) {
+        clearInterval(recordingTimerInterval);
+        recordingTimerInterval = null;
+      }
+
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+      }
+
+      activeRecordingMedId = null;
+      renderVoiceMeds();
+    }
+
+    function playRecordedVoice(medId) {
+      if (!state.recordings || !state.recordings[medId]) return;
+
+      if (currentAlarmAudio) {
+        currentAlarmAudio.pause();
+        currentAlarmAudio.currentTime = 0;
+      }
+
+      currentAlarmAudio = new Audio(state.recordings[medId]);
+      currentAlarmAudio.play().catch(e => {
+        console.log('Audio playback error:', e);
+      });
+    }
+
+    function reRecordVoice(medId) {
+      startRecordingMed(medId);
+    }
+
+    function previewChildReminder(medId) {
+      const med = state.medications.find(m => m.id === medId);
+      if (!med) return;
+
+      showToast(TEXT.voicePreviewChild, 'info');
+      playChime();
+
+      let childName = TEXT.sampleChildName;
+      if (state.contacts && state.contacts.length > 0) {
+        const found = state.contacts.find(c =>
+          (c.relation && (c.relation.includes('ابنة') || c.relation.includes('ابن'))) ||
+          c.name.includes('ريم')
+        );
+        if (found) childName = found.name.replace(/\(.*?\)/g, '').trim();
+      }
+
+      setTimeout(() => {
+        speakReminder(med, childName);
+      }, 600);
+    }
+
+    // ============================================================
+    // FAMILY DASHBOARD
+    // ============================================================
+    function renderDashboard() {
+      renderDashboardAlerts();
+      renderDashboardTodayStatus();
+      renderDashboardMoodChart();
+      renderVoiceMeds();
+      renderDashboardEditLists();
+    }
+
+    function renderDashboardAlerts() {
+      const panel = document.getElementById('alertsPanel');
+      const list = document.getElementById('alertsList');
+      if (!panel || !list) return;
+
+      if (!state.alerts || state.alerts.length === 0) {
+        panel.classList.remove('has-alerts');
+        list.innerHTML = '';
+        return;
+      }
+
+      panel.classList.add('has-alerts');
+      list.innerHTML = state.alerts.map(a => `
+        <div class="alert-item">
+          <span class="alert-icon">⚠️</span>
+          <span class="alert-text">${a.text}</span>
+          <button class="alert-dismiss" onclick="dismissAlert(${a.id})">${TEXT.alertDismiss}</button>
+        </div>
+      `).join('');
+    }
+
+    function dismissAlert(id) {
+      state.alerts = state.alerts.filter(a => a.id !== id);
+      saveState();
+      renderDashboardAlerts();
+    }
+
+    function renderDashboardTodayStatus() {
+      const grid = document.getElementById('dashStatusGrid');
+      if (!grid) return;
+
+      const today = getTodayKey();
+      const now = new Date();
+      const curTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+      if (!state.medications || state.medications.length === 0) {
+        grid.innerHTML = `<p style="color:var(--clr-text-light)">${TEXT.noData}</p>`;
+        return;
+      }
+
+      let allTaken = true;
+      let html = '<div class="dash-status-card">';
+
+      state.medications.forEach(m => {
+        const takenTime = state.medLog[today] && state.medLog[today][m.id];
+        let dotClass = 'pending';
+        let statusText = TEXT.medPending;
+
+        if (takenTime) {
+          dotClass = 'taken';
+          statusText = `${TEXT.medTaken} (${takenTime})`;
+        } else if (curTime > m.time) {
+          dotClass = 'missed';
+          statusText = TEXT.medMissed;
+          allTaken = false;
+        } else {
+          allTaken = false;
+        }
+
+        html += `
+          <div class="dash-med-status">
+            <span class="status-dot ${dotClass}"></span>
+            <div style="flex:1">
+              <strong>${m.name}</strong>
+              <div style="font-size:0.8rem; color:var(--clr-text-light)">${m.time} — ${m.dose || ''}</div>
+            </div>
+            <span style="font-size:0.85rem; font-weight:600">${statusText}</span>
+          </div>
+        `;
+      });
+
+      html += '</div>';
+
+      // Summary card
+      html += `
+        <div class="dash-status-card ${!allTaken ? 'alert' : ''}">
+          <h4 style="font-size:1rem; margin-bottom:10px">📊 ملخّص اليوم</h4>
+          <p style="font-size:0.95rem; margin-bottom:8px">
+            الوالد: <strong>${state.parentName || 'الحاجّ أبو أحمد'}</strong>
+          </p>
+          <p style="font-size:0.85rem; color:var(--clr-text-light); margin-bottom:12px">
+            ${TEXT.lastActivity}: ${now.toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' })}
+          </p>
+          <div style="padding:10px; border-radius:var(--radius-sm); background:${allTaken ? '#E8F5E9' : '#FFF9E6'}; font-size:0.85rem; font-weight:700; color:${allTaken ? 'var(--clr-success)' : 'var(--clr-warning)'}">
+            ${allTaken ? '✅ تمّ أخذ جميع الأدوية المحدّدة لليوم بنجاح.' : '🔔 بانتظار استكمال الجرعات في مواعيدها.'}
+          </div>
+        </div>
+      `;
+
+      grid.innerHTML = html;
+    }
+
+    function renderDashboardMoodChart() {
+      const svg = document.getElementById('moodChart');
+      if (!svg) return;
+
+      const moods = state.moods || [];
+      if (moods.length < 2) {
+        svg.innerHTML = `
+          <text x="350" y="100" text-anchor="middle" fill="#888" font-size="16" font-family="Cairo">
+            ${TEXT.chartEmpty}
+          </text>
+        `;
+        return;
+      }
+
+      // Take last 7 entries
+      const data = moods.slice(-7);
+      const points = [];
+      const stepX = 600 / Math.max(1, data.length - 1);
+
+      data.forEach((entry, idx) => {
+        const x = 50 + idx * stepX;
+        const val = Math.max(1, Math.min(5, entry.value));
+        const y = 160 - (val - 1) * 28;
+        points.push({ x, y, val, date: entry.date });
+      });
+
+      // SVG path
+      const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+      const areaD = `${pathD} L ${points[points.length - 1].x} 180 L ${points[0].x} 180 Z`;
+
+      const emojiMap = { 5: '😊', 4: '🙂', 3: '😐', 2: '😔', 1: '😢' };
+
+      let svgContent = `
+        <defs>
+          <linearGradient id="moodGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#4A7C59" stop-opacity="0.25" />
+            <stop offset="100%" stop-color="#4A7C59" stop-opacity="0.0" />
+          </linearGradient>
+        </defs>
+      `;
+
+      // Horizontal guideline levels (1 to 5)
+      for (let level = 1; level <= 5; level++) {
+        const y = 160 - (level - 1) * 28;
+        svgContent += `
+          <line x1="40" y1="${y}" x2="660" y2="${y}" stroke="#E8E0D0" stroke-width="1" stroke-dasharray="4" />
+          <text x="680" y="${y + 5}" text-anchor="middle" font-size="14">${emojiMap[level]}</text>
+        `;
+      }
+
+      // Filled area
+      svgContent += `<path d="${areaD}" fill="url(#moodGradient)" />`;
+
+      // Trend line
+      svgContent += `<path d="${pathD}" fill="none" stroke="var(--clr-olive)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />`;
+
+      // Circles & Labels
+      points.forEach(p => {
+        let dayName = '';
+        try {
+          const d = new Date(p.date);
+          dayName = new Intl.DateTimeFormat('ar-JO', { weekday: 'short' }).format(d);
+        } catch (e) {
+          dayName = p.date;
+        }
+
+        svgContent += `
+          <circle cx="${p.x}" cy="${p.y}" r="6" fill="#FFF" stroke="var(--clr-olive)" stroke-width="3" />
+          <text x="${p.x}" y="${p.y - 12}" text-anchor="middle" font-size="13">${emojiMap[p.val]}</text>
+          <text x="${p.x}" y="195" text-anchor="middle" font-size="12" fill="var(--clr-text-light)" font-family="Cairo">${dayName}</text>
+        `;
+      });
+
+      svg.innerHTML = svgContent;
+    }
+
+    function renderDashboardEditLists() {
+      // Meds
+      const medListEl = document.getElementById('dashMedList');
+      if (medListEl) {
+        medListEl.innerHTML = state.medications.map(m => `
+          <div class="item-card">
+            <div class="item-info">
+              <div class="item-name">💊 ${m.name}</div>
+              <div class="item-detail">${m.time} — ${m.dose || ''} ${m.note ? '(' + m.note + ')' : ''}</div>
+            </div>
+            <button class="item-remove" onclick="removeMedication(${m.id}); renderDashboard();" aria-label="${TEXT.remove}">${TEXT.remove}</button>
+          </div>
+        `).join('');
+      }
+
+      // Appointments
+      const apptListEl = document.getElementById('dashApptList');
+      if (apptListEl) {
+        apptListEl.innerHTML = state.appointments.map(a => `
+          <div class="item-card">
+            <div class="item-info">
+              <div class="item-name">📅 ${a.title}</div>
+              <div class="item-detail">${formatDateArabic(a.date)} ${a.time || ''} — ${a.location || ''}</div>
+            </div>
+            <button class="item-remove" onclick="removeAppointment(${a.id}); renderDashboard();" aria-label="${TEXT.remove}">${TEXT.remove}</button>
+          </div>
+        `).join('');
+      }
+
+      // Contacts
+      const contactListEl = document.getElementById('dashContactList');
+      if (contactListEl) {
+        contactListEl.innerHTML = state.contacts.map(c => `
+          <div class="item-card">
+            <div class="item-info">
+              <div class="item-name">👤 ${c.name}</div>
+              <div class="item-detail">${c.relation} — ${c.phone}</div>
+            </div>
+            <button class="item-remove" onclick="removeContact(${c.id}); renderDashboard();" aria-label="${TEXT.remove}">${TEXT.remove}</button>
+          </div>
+        `).join('');
+      }
+    }
+
+    function logout() {
+      showConfirm(
+        '🚪',
+        TEXT.logoutConfirm,
+        TEXT.btnLogout,
+        TEXT.cancel,
+        () => {
+          state.loggedIn = false;
+          saveState();
+          showSection('landing');
+        }
+      );
+    }
+
+    function resetDemoData() {
+      showConfirm(
+        '🔄',
+        TEXT.resetDemoConfirm,
+        TEXT.confirm,
+        TEXT.cancel,
+        () => {
+          enterDemoMode();
+        }
+      );
+    }
+
+    // ============================================================
+    // DEMO MODE ("جرّب كحَكَم")
+    // ============================================================
+    function enterDemoMode() {
+      // 7 days of mood data
+      const moods = [];
+      const d = new Date();
+      for (let i = 6; i >= 0; i--) {
+        const past = new Date(d);
+        past.setDate(d.getDate() - i);
+        const y = past.getFullYear();
+        const m = String(past.getMonth() + 1).padStart(2, '0');
+        const day = String(past.getDate()).padStart(2, '0');
+        const vals = [4, 5, 4, 3, 5, 4, 5];
+        moods.push({ date: `${y}-${m}-${day}`, value: vals[6 - i] });
+      }
+
+      const todayStr = getTodayKey();
+
+      // Realistic Jordanian demo data
+      state = {
+        ...JSON.parse(JSON.stringify(DEFAULT_STATE)),
+        loggedIn: true,
+        isDemo: true,
+        phone: '0791234567',
+        parentName: 'الحاجّ أبو أحمد',
+        parentGender: 'male',
+        parentPhoto: '👴',
+        fontSize: state.fontSize || 22,
+        medications: [
+          {
+            id: 101,
+            name: 'كونكور (Concor 5mg)',
+            time: '08:00',
+            dose: 'حبة واحدة',
+            note: 'بعد الإفطار — لضغط الدم'
+          },
+          {
+            id: 102,
+            name: 'غلوكوفاج (Glucophage 500mg)',
+            time: '14:00',
+            dose: 'حبة واحدة',
+            note: 'مع وجبة الغداء — للسكري'
+          },
+          {
+            id: 103,
+            name: 'أسبيرين (Aspirin 81mg)',
+            time: '20:00',
+            dose: 'حبة واحدة',
+            note: 'بعد العشاء مع كأس ماء'
+          }
+        ],
+        appointments: [
+          {
+            id: 201,
+            title: 'مراجعة طبيب القلب (د. عمر خريس)',
+            date: todayStr,
+            time: '11:00',
+            location: 'مستشفى الاستقلال — العيادات الخارجية'
+          },
+          {
+            id: 202,
+            title: 'زيارة ريم والأحفاد للغداء',
+            date: getFutureDate(3),
+            time: '13:30',
+            location: 'بيت الحاج أبو أحمد'
+          }
+        ],
+        contacts: [
+          { id: 301, name: 'ريم (الابنة)', phone: '0798765432', relation: 'ابنة' },
+          { id: 302, name: 'طارق (الابن)', phone: '0791122334', relation: 'ابن' },
+          { id: 303, name: 'طوارئ الدفاع المدني', phone: '911', relation: 'طوارئ عامة' }
+        ],
+        // Pre-made synthetic voice reminders that work without recording anything!
+        recordings: {
+          101: createSampleToneWav(523.25, 1.4),
+          102: createSampleToneWav(659.25, 1.4)
+        },
+        moods: moods,
+        alerts: [
+          {
+            id: 401,
+            text: 'تنبيه صباحيّ: تمّ تذكير الحاجّ أبو أحمد بدواء كونكور في الساعة 08:00.',
+            date: todayStr,
+            medId: 101
+          }
+        ],
+        medLog: {
+          [todayStr]: {
+            101: '08:15'
+          }
+        },
+        currentView: 'dashboard',
+        audioUnlocked: true,
+        alarmSnooze: {},
+        alarmRepeatCount: {}
+      };
+
+      saveState();
+      applyText();
+      applyFontSize();
+      showSection('dashboard');
+      showToast(TEXT.demoWelcome, 'success');
+    }
+
+    // ============================================================
+    // APPLICATION ENTRY POINT
+    // ============================================================
+    window.addEventListener('DOMContentLoaded', init);
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      init();
+    }
+  </script>
+</body>
+</html>
